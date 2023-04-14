@@ -11,14 +11,14 @@ use tui::{
     }, 
     style::{ Style, Modifier, Color }, 
     text::{Span, Spans}};
-use crate::{App, components::centered_rectangle::centered_rect};
+use crate::{App, component::block::centered_rect_a};
 
 
 pub fn ui<B: Backend>(f: &mut Frame<B>, app: &App, user_choice: usize) {
     let size = f.size();
 
     // two different areas that will be rendered
-    let main_area = centered_rect(20, 14, size);
+    let main_area = centered_rect_a(20, 14, size);
     let info_area = Rect::new(main_area.left(), main_area.bottom() + 1, main_area.width, 8);
 
     // if the signup is true, render the signup block

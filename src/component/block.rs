@@ -1,6 +1,6 @@
 use tui::layout::{Layout, Rect, Direction, Constraint};
 
-pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+pub fn centered_rect_a(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints(
@@ -24,7 +24,7 @@ pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 }
 
 
-pub fn centered_rect_a(width: u16, height: u16, area: Rect) -> Rect {
+pub fn centered_rect_b(width: u16, height: u16, area: Rect) -> Rect {
     let left = (area.width.saturating_sub(width)) / 2;
     let top = (area.height.saturating_sub(height)) / 2;
     Rect::new(left, top, width, height)

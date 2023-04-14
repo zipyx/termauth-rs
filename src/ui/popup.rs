@@ -1,4 +1,4 @@
-use crate::components::centered_rectangle::centered_rect;
+use crate::component::block::centered_rect_a;
 use crate::App;
 
 use tui::{
@@ -47,7 +47,7 @@ pub fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
         let block = Block::default()
             .title("Sign Up")
             .borders(Borders::ALL);
-        let area = centered_rect(40, 20, size);
+        let area = centered_rect_a(40, 20, size);
         // Render the popup
         f.render_widget(Clear, area);
         f.render_widget(block, area);

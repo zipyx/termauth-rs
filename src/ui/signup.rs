@@ -25,11 +25,11 @@ pub fn ui<B: Backend>(f: &mut Frame<B>, app: &App, prompt: &str, input: &String,
     if app.signup {
 
         // character chunks for the input block
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .margin(2)
-            .constraints([Constraint::Length(3)].as_ref())
-            .split(size);
+        // let chunks = Layout::default()
+        //     .direction(Direction::Vertical)
+        //     .margin(2)
+        //     .constraints([Constraint::Length(3)].as_ref())
+        //     .split(size);
 
         // input block
         let input_block = Paragraph::new(format!("{}{}", prompt, input))
@@ -37,7 +37,13 @@ pub fn ui<B: Backend>(f: &mut Frame<B>, app: &App, prompt: &str, input: &String,
             .borders(Borders::ALL)
             .title("Sign Up"));
 
-        f.render_widget(input_block, chunks[0]);
+        // let paragraph_block = Paragraph::new("Hello, World!")
+        //     .block(Block::default()
+        //     .borders(Borders::ALL)
+        //     .title("Welcome!"));
+        // f.render_widget(paragraph_block, main_area);
+
+        f.render_widget(input_block, main_area);
 
     // else show the menu
     } else {
@@ -61,9 +67,9 @@ pub fn ui<B: Backend>(f: &mut Frame<B>, app: &App, prompt: &str, input: &String,
             .block(Block::default().borders(Borders::ALL).title("Sign Up"))
             .highlight_style(Style::default().bg(Color::Green));
 
-        // // render menu in the main area
-
+        // render menu in the main area
         f.render_widget(menu, main_area);
+
         // character chunks for the input block
         let chunks = Layout::default()
             .direction(Direction::Vertical)
