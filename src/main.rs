@@ -1,59 +1,84 @@
 mod ui;
 mod component;
-mod auth;
+mod backend;
 
-use std::{error::Error, io};
-use component::item::{Account, Credential, UserMode, MENU};
+use std::{error::Error, io, time::{Duration, Instant}};
 use component::state::{TabsState, StateList};
 use crossterm::{
     terminal::{enable_raw_mode, EnterAlternateScreen, disable_raw_mode, LeaveAlternateScreen }, 
     execute, 
     event::{EnableMouseCapture, DisableMouseCapture, KeyCode, self, Event}};
 use tui::{backend::{CrosstermBackend, Backend}, Terminal};
+use backend::
+    service::{
+        credential,
+        credential::Manager,
+        user::{UserMode, SignUp, Login, User, UserService},
+        utility::constants::{VISITOR, MEMBER, SYSTEM},
+    };
 
+struct Temp {
+    username: String,
+    password: String,
+    credential_name: String,
+    credential_username: String,
+    credential_password: String,
+    search_query: String,
+    notepad: Vec<String>,
+}
 
+// fn main() -> Result<(), Box<dyn Error>> {
 pub struct App<'a> {
     input: String,
-    account: Account<'a>,
-    credential: Credential<'a>,
+    user: User,
     user_mode: UserMode,
+    // scroll: u16,
+    signup: SignUp,
+    login: Login,
+    signed_in: bool,
+    new_username: String,
+    new_password: String,
+    new_credential_name: String,
+    new_credential_username: String,
+    new_credential_password: String,
     search_query: String,
-    search_credentials_list: Vec<Credential<'a>>,
+    // search_credentials_list: Vec<CredentialManager>,
     notepad: Vec<String>,
-    tabs: TabsState<'a>,
+    tabs_granted: TabsState<'a>,
+    tabs_restricted: TabsState<'a>,
     info: StateList<&'a str>,
 }
 
 impl <'a>App<'a> {
+
     fn new() -> App<'a> {
+
         App {
             input: String::new(),
-            account: Account::new(),
-            credential: Credential::new(),
+            user: User::new(),
             user_mode: UserMode::Normal,
+            // scroll: 0,
+            signup: SignUp::Username,
+            login: Login::Username,
+            signed_in: false,
+            new_username: String::new(),
+            new_password: String::new(),
+            new_credential_name: String::new(),
+            new_credential_username: String::new(),
+            new_credential_password: String::new(),
             search_query: String::new(),
-            search_credentials_list: Vec::new(),
+            // search_credentials_list: Vec::new(),
             notepad: Vec::new(),
-            tabs: TabsState::new(MENU.to_vec()),
-            info: StateList::all_items(MENU.to_vec()),
+            tabs_granted: TabsState::new(MEMBER.to_vec()),
+            tabs_restricted: TabsState::new(VISITOR.to_vec()),
+            info: StateList::all_items(SYSTEM.to_vec()),
         }
     }
 
-    fn on_up_account(&mut self) {
-        self.account.on_up();
-    }
-
-    fn on_down_account(&mut self) {
-        self.account.on_down();
-    }
-
-    fn on_up_credential(&mut self) {
-        self.credential.on_up();
-    }
-
-    fn on_down_credential(&mut self) {
-        self.credential.on_down();
-    }
+    // fn tick(&mut self) {
+    //     self.scroll += 1;
+    //     self.scroll %= 3;
+    // }
 
     fn on_up_info(&mut self) {
         self.info.previous();
@@ -64,11 +89,19 @@ impl <'a>App<'a> {
     }
 
     fn on_right(&mut self) {
-        self.tabs.next();
+        if self.signed_in {
+            self.tabs_granted.next();
+        } else {
+            self.tabs_restricted.next();
+        }
     }
 
     fn on_left(&mut self) {
-        self.tabs.previous();
+        if self.signed_in {
+            self.tabs_granted.previous();
+        } else {
+            self.tabs_restricted.previous();
+        }
     }
 }
 
@@ -83,13 +116,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
+    // set timer
+    // let tick_rate = Duration::from_millis(250);
+
     // Create app 
     let app = App::new();
     let res = ui_app(&mut terminal, app);
-    // let res = ui_popup(&mut terminal, app);
-    // let res = ui_menu(&mut terminal, app);
-    // let res = ui_selection(&mut terminal, app);
-    // let res = ui_signup(&mut terminal, app);
 
     // Restore terminal on exit
     disable_raw_mode()?;
@@ -111,51 +143,255 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
 
+    // let mut last_tick = Instant::now();
+
     loop {
 
         terminal.draw(|f| ui::app::draw(f, &mut app))?;
 
+        // let timeout = tick_rate.checked_sub(
+        //     last_tick.elapsed()).unwrap_or_else(|| Duration::from_secs(0));
+
+        // Handle events
         if let Event::Key(key) = event::read()? {
 
-            // Welcome
-            if app.tabs.index == 0 {
-                match app.user_mode {
-                    UserMode::Normal => match key.code {
-                        KeyCode::Char('h') => app.on_left(),
-                        KeyCode::Char('l') => app.on_right(),
-                        KeyCode::Char('q') | KeyCode::Esc => {
-                            disable_raw_mode()?;
-                            terminal.show_cursor()?;
-                            return Ok(())
+            // if user signed in
+            if app.signed_in {
+
+                // Welcome
+                if app.tabs_granted.index == 0 {
+                    match app.user_mode {
+                        UserMode::Normal => match key.code {
+                            KeyCode::Char('h') => app.on_left(),
+                            KeyCode::Char('l') => app.on_right(),
+                            KeyCode::Char('q') | KeyCode::Esc => {
+                                disable_raw_mode()?;
+                                terminal.show_cursor()?;
+                                return Ok(())
+                            }
+                            _ => {}
                         }
                         _ => {}
                     }
-                    _ => {}
-                }
 
-            // Sign Up
-            } else if app.tabs.index == 1 {
-                match app.user_mode {
-                    UserMode::Normal => match key.code {
-                        KeyCode::Char('j') => app.on_down_account(),
-                        KeyCode::Char('k') => app.on_up_account(),
-                        KeyCode::Char('h') => app.on_left(),
-                        KeyCode::Char('l') => app.on_right(),
-                        KeyCode::Char('q') | KeyCode::Esc => {
-                            disable_raw_mode()?;
-                            terminal.show_cursor()?;
-                            return Ok(())
+                    // Notepad
+                } else if app.tabs_granted.index == 1 {
+                    match app.user_mode {
+                        UserMode::Normal => match key.code {
+                            KeyCode::Char('h') => app.on_left(),
+                            KeyCode::Char('l') => app.on_right(),
+                            KeyCode::Char('q') | KeyCode::Esc => {
+                                disable_raw_mode()?;
+                                terminal.show_cursor()?;
+                                return Ok(())
+                            }
+                            KeyCode::Char('i') => {
+                                app.user_mode = UserMode::Insert;
+                            }
+                            _ => {}
                         }
-                        // KeyCode::Char('i') => {
-                        //     app.user_mode = UserMode::Insert;
+                        UserMode::Insert => match key.code {
+                            KeyCode::Enter => {
+                                app.notepad.push(app.input.drain(..).collect());
+                            }
+                            KeyCode::Char(c) => {
+                                app.input.push(c);
+                            }
+                            KeyCode::Backspace => {
+                                app.input.pop();
+                            }
+                            KeyCode::Esc => {
+                                app.user_mode = UserMode::Normal;
+                            }
+                            _ => {}
+                        }
+                        _ => {}
+                    }
+
+                    // Credential Manager
+                } else if app.tabs_granted.index == 2 {
+                    match app.user_mode {
+
+                        // UserMode::Normal => match key.code {
+                        //     KeyCode::Char('j') => {
+                        //         app.login = Login::Password
+                        //     }
+                        //     KeyCode::Char('k') => {
+                        //         app.login = Login::Username;
+                        //     }
+                        //     KeyCode::Char('h') => app.on_left(),
+                        //     KeyCode::Char('l') => app.on_right(),
+                        //     KeyCode::Char('q') | KeyCode::Esc => {
+                        //         disable_raw_mode()?;
+                        //         terminal.show_cursor()?;
+                        //         return Ok(())
+                        //     }
+                        //     _ => {}
                         // }
+                        // _ => {}
+
+                        UserMode::Normal => match key.code {
+                            KeyCode::Char('j') => {
+                                app.signup = SignUp::Password;
+                            }
+                            KeyCode::Char('k') => {
+                                app.signup = SignUp::Username;
+                            }
+                            KeyCode::Char('h') => app.on_left(),
+                            KeyCode::Char('l') => app.on_right(),
+                            KeyCode::Char('q') | KeyCode::Esc => {
+                                disable_raw_mode()?;
+                                terminal.show_cursor()?;
+                                return Ok(())
+                            }
+                            KeyCode::Char('i') => {
+                                app.user_mode = UserMode::Username;
+                            }
+                            KeyCode::Char('p') => {
+                                app.user_mode = UserMode::Password;
+                                app.signup = SignUp::Password;
+                            }
+                            _ => {}
+                        }
+
+                        UserMode::Username => match key.code {
+                            KeyCode::Enter => {
+                                app.user.set_username(app.new_username.to_owned());
+                                app.user_mode = UserMode::Password;
+                                app.signup = SignUp::Password;
+                            }
+                            KeyCode::Char(c) => {
+                                app.new_username.push(c);
+                            }
+                            KeyCode::Backspace => {
+                                app.new_username.pop();
+                            }
+                            KeyCode::Esc => {
+                                app.user_mode = UserMode::Normal;
+                            }
+                            _ => {}
+                        }
+
+                        UserMode::Password => match key.code {
+                            KeyCode::Enter => {
+                                app.user.set_password(app.new_username.to_owned());
+                                app.user_mode = UserMode::Normal;
+                            }
+                            KeyCode::Char(c) => {
+                                app.new_password.push(c);
+                            }
+                            KeyCode::Backspace => {
+                                app.new_password.pop();
+                            }
+                            KeyCode::Esc => {
+                                app.user_mode = UserMode::Normal;
+                            }
+                            _ => {}
+                        }
+                        _ => {}
+
+                    }
+
+
+                } // end of tabs granted
+            }  // end of signed in
+
+            // Welcome
+            if app.tabs_restricted.index == 0 {
+                match app.user_mode {
+                    UserMode::Normal => match key.code {
+                        KeyCode::Char('h') => app.on_left(),
+                        KeyCode::Char('l') => app.on_right(),
+                        KeyCode::Char('q') | KeyCode::Esc => {
+                            disable_raw_mode()?;
+                            terminal.show_cursor()?;
+                            return Ok(())
+                        }
                         _ => {}
                     }
                     _ => {}
                 }
 
-            // Login
-            } else if app.tabs.index == 2 {
+                // Sign Up
+            } else if app.tabs_restricted.index == 1 {
+                match app.user_mode {
+
+                    UserMode::Normal => match key.code {
+                        // KeyCode::Char('j') => app.signup = SignUp::Password,
+                        // KeyCode::Char('k') => app.signup = SignUp::Username,
+                        KeyCode::Char('w') => {
+                            app.user.new_account(
+                                app.new_username.to_owned(), 
+                                app.new_password.to_owned()
+                            );
+                            app.new_username.clear();
+                            app.new_password.clear();
+                            app.user.set_username(app.new_username.to_owned());
+                            app.user.set_password(app.new_password.to_owned());
+                            app.signed_in = true;
+                        }
+                        KeyCode::Char('j') => {
+                            app.signup = SignUp::Password;
+                        }
+                        KeyCode::Char('k') => {
+                            app.signup = SignUp::Username;
+                        }
+                        KeyCode::Char('h') => app.on_left(),
+                        KeyCode::Char('l') => app.on_right(),
+                        KeyCode::Char('q') | KeyCode::Esc => {
+                            disable_raw_mode()?;
+                            terminal.show_cursor()?;
+                            return Ok(())
+                        }
+                        KeyCode::Char('i') => {
+                            app.user_mode = UserMode::Username;
+                        }
+                        KeyCode::Char('p') => {
+                            app.user_mode = UserMode::Password;
+                            app.signup = SignUp::Password;
+                        }
+                        _ => {}
+                    }
+                    
+                    UserMode::Username => match key.code {
+                        KeyCode::Enter => {
+                            app.user.set_username(app.new_username.to_owned());
+                            app.user_mode = UserMode::Password;
+                            app.signup = SignUp::Password;
+                        }
+                        KeyCode::Char(c) => {
+                            app.new_username.push(c);
+                        }
+                        KeyCode::Backspace => {
+                            app.new_username.pop();
+                        }
+                        KeyCode::Esc => {
+                            app.user_mode = UserMode::Normal;
+                        }
+                        _ => {}
+                    }
+
+                    UserMode::Password => match key.code {
+                        KeyCode::Enter => {
+                            app.user.set_password(app.new_username.to_owned());
+                            app.user_mode = UserMode::Normal;
+                        }
+                        KeyCode::Char(c) => {
+                            app.new_password.push(c);
+                        }
+                        KeyCode::Backspace => {
+                            app.new_password.pop();
+                        }
+                        KeyCode::Esc => {
+                            app.user_mode = UserMode::Normal;
+                        }
+                        _ => {}
+                    }
+                    _ => {}
+                }
+
+                // Login
+            } else if app.tabs_restricted.index == 2 {
                 match app.user_mode {
                     UserMode::Normal => match key.code {
                         KeyCode::Char('j') => app.on_down_info(),
@@ -167,392 +403,13 @@ fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()
                             terminal.show_cursor()?;
                             return Ok(())
                         }
-                        // KeyCode::Char('i') => {
-                        //     app.user_mode = UserMode::Insert;
-                        // }
                         _ => {}
                     }
                     _ => {}
                 }
+            } 
 
-            // Notepad
-            } else if app.tabs.index == 3 {
-                match app.user_mode {
-                    UserMode::Normal => match key.code {
-                        KeyCode::Char('h') => app.on_left(),
-                        KeyCode::Char('l') => app.on_right(),
-                        KeyCode::Char('q') | KeyCode::Esc => {
-                            disable_raw_mode()?;
-                            terminal.show_cursor()?;
-                            return Ok(())
-                        }
-                        KeyCode::Char('i') => {
-                            app.user_mode = UserMode::Insert;
-                        }
-                        _ => {}
-                    }
-                    UserMode::Insert => match key.code {
-                        KeyCode::Enter => {
-                            app.notepad.push(app.input.drain(..).collect());
-                        }
-                        KeyCode::Char(c) => {
-                            app.input.push(c);
-                        }
-                        KeyCode::Backspace => {
-                            app.input.pop();
-                        }
-                        KeyCode::Esc => {
-                            app.user_mode = UserMode::Normal;
-                        }
-                        _ => {}
-                    }
-                    _ => {}
-                }
-
-            // Credential Manager
-            } else if app.tabs.index == 4 {
-                match app.user_mode {
-                    UserMode::Normal => match key.code {
-                        KeyCode::Char('j') => app.on_down_credential(),
-                        KeyCode::Char('k') => app.on_up_credential(),
-                        KeyCode::Char('h') => app.on_left(),
-                        KeyCode::Char('l') => app.on_right(),
-                        KeyCode::Char('q') | KeyCode::Esc => {
-                            disable_raw_mode()?;
-                            terminal.show_cursor()?;
-                            return Ok(())
-                        }
-                        // KeyCode::Char('i') => {
-                        //     app.user_mode = UserMode::Insert;
-                        // }
-                        _ => {}
-                    }
-                    _ => {}
-                }
-            }
-        }
-
-        // if let Event::Key(key) = event::read()? {
-        //     match app.user_mode {
-        //         UserMode::Normal => match key.code {
-        //             KeyCode::Char('j') => app.on_down_info(),
-        //             KeyCode::Char('k') => app.on_up_info(),
-        //             KeyCode::Char('h') => app.on_left(),
-        //             KeyCode::Char('l') => app.on_right(),
-        //             KeyCode::Char('q') | KeyCode::Esc => {
-        //                 disable_raw_mode()?;
-        //                 terminal.show_cursor()?;
-        //                 return Ok(())
-        //             }
-        //             KeyCode::Char('i') => {
-        //                 app.user_mode = UserMode::Insert;
-        //             }
-        //             _ => {}
-        //         }
-        //         UserMode::Insert => match key.code {
-        //             KeyCode::Enter => {
-        //                 app.notepad.push(app.input.drain(..).collect());
-        //             }
-        //             KeyCode::Char(c) => {
-        //                 app.input.push(c);
-        //             }
-        //             KeyCode::Backspace => {
-        //                 app.input.pop();
-        //             }
-        //             KeyCode::Esc => {
-        //                 app.user_mode = UserMode::Normal;
-        //             }
-        //             _ => {}
-        //         }
-        //         UserMode::SignUp => match key.code {
-        //             KeyCode::Char('j') => app.on_down_account(),
-        //             KeyCode::Char('k') => app.on_up_account(),
-        //             KeyCode::Char('h') => app.on_left(),
-        //             KeyCode::Char('l') => app.on_right(),
-        //             KeyCode::Char('q') | KeyCode::Esc => {
-        //                 disable_raw_mode()?;
-        //                 terminal.show_cursor()?;
-        //                 return Ok(())
-        //             }
-        //             _ => {}
-        //         }
-        //         UserMode::LogIn => match key.code {
-        //             KeyCode::Char('j') => app.on_down_account(),
-        //             KeyCode::Char('k') => app.on_up_account(),
-        //             KeyCode::Char('h') => app.on_left(),
-        //             KeyCode::Char('l') => app.on_right(),
-        //             KeyCode::Char('q') | KeyCode::Esc => {
-        //                 disable_raw_mode()?;
-        //                 terminal.show_cursor()?;
-        //                 return Ok(())
-        //             }
-        //             _ => {}
-        //         }
-        //         UserMode::Credential => match key.code {
-        //             KeyCode::Char('j') => app.on_down_credential(),
-        //             KeyCode::Char('k') => app.on_up_credential(),
-        //             KeyCode::Char('h') => app.on_left(),
-        //             KeyCode::Char('l') => app.on_right(),
-        //             KeyCode::Char('q') | KeyCode::Esc => {
-        //                 disable_raw_mode()?;
-        //                 terminal.show_cursor()?;
-        //                 return Ok(())
-        //             }
-        //             _ => {}
-        //         }
-        //     }
-        // }
+        } // end of handle events = main loop
     }
 }
-
-
-        // if let Event::Key(key) = event::read()? {
-        //     // terminal.draw(|f| ui::menu::ui(f, &app, user_choice))?;
-        //     match app.menu {
-        //         Menu::Main => match key.code {
-        //             KeyCode::Char('q') | KeyCode::Esc => {
-        //                 disable_raw_mode()?;
-        //                 terminal.show_cursor()?;
-        //                 return Ok(())
-        //             } 
-
-        //             KeyCode::Enter => {
-        //                 if user_choice == 0 {
-        //                     app.menu = Menu::Signup;
-        //                 } else if user_choice == 1 {
-        //                     app.menu = Menu::Login;
-        //                 } else  {
-        //                     disable_raw_mode()?;
-        //                     terminal.show_cursor()?;
-        //                     return Ok(())
-        //                 }
-        //             }
-        //             KeyCode::Char('j') => {
-        //                 if user_choice < 2 {
-        //                     user_choice += 1;
-        //                 }
-        //             }
-        //             KeyCode::Char('k') => {
-        //                 if user_choice > 0 {
-        //                     user_choice -= 1;
-        //                 }
-        //             }
-        //             _ => {}
-        //         }
-        //         Menu::Login => match key.code {
-        //             KeyCode::Esc => {
-        //                 app.menu = Menu::Main;
-        //             } 
-        //             KeyCode::Char('q') => {
-        //                 disable_raw_mode()?;
-        //                 terminal.show_cursor()?;
-        //                 return Ok(())
-        //             } 
-        //             KeyCode::Char('j') => {
-        //                 if user_choice < 1 {
-        //                     user_choice += 1;
-        //                 }
-        //             }
-        //             KeyCode::Char('k') => {
-        //                 if user_choice > 0 {
-        //                     user_choice -= 1;
-        //                 }
-        //             }
-        //             _ => {}
-        //         }
-        //         Menu::Signup => match key.code {
-        //             KeyCode::Esc => {
-        //                 app.menu = Menu::Main;
-        //             } 
-        //             KeyCode::Char('q') => {
-        //                 disable_raw_mode()?;
-        //                 terminal.show_cursor()?;
-        //                 return Ok(())
-        //             } 
-        //             KeyCode::Char('j') => {
-        //                 if user_choice < 1 {
-        //                     user_choice += 1;
-        //                 }
-        //             }
-        //             KeyCode::Char('k') => {
-        //                 if user_choice > 0 {
-        //                     user_choice -= 1;
-        //                 }
-        //             }
-        //             _ => {}
-        //         }
-        //     }
-        // }
-
-
-// // ui popup run check
-// fn _ui_popup<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
-//     loop {
-//         terminal.draw(|f| ui::popup::ui(f, &app))?;
-
-//         if let Event::Key(key) = event::read()? {
-//             match key.code {
-//                 KeyCode::Char('q') => return Ok(()),
-//                 KeyCode::Char('a') => app.signup = !app.signup,
-//                 _ => {}
-//             }
-//         }
-//     }
-// }
-
-// // ui menu run check
-// fn _ui_menu<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
-//     loop {
-//         let mut _user_choice = 0;
-//         terminal.draw(|f| ui::menu::ui(f, &app, _user_choice))?;
-
-//         if let Event::Key(key) = event::read()? {
-//             match key.code {
-//                 KeyCode::Char('q') => return Ok(()),
-//                 KeyCode::Char('a') => app.signup = !app.signup,
-//                 _ => {}
-//             }
-//         }
-//     }
-// }
-
-// // run some tests on the terminal for keys pressed
-// fn _ui_selection<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
-
-//     let mut user_choice = 0;
-//     loop {
-//         terminal.draw(|f| ui::menu::ui(f, &app, user_choice))?;
-
-//         if let Event::Key(key) = event::read()? {
-//             match key.code {
-//                 KeyCode::Char('q') | KeyCode::Esc => {
-//                     disable_raw_mode()?;
-//                     terminal.show_cursor()?;
-//                     return Ok(())
-//                 } 
-//                 KeyCode::Enter => {
-//                     if user_choice == 0 {
-//                         disable_raw_mode()?;
-//                         app.signup = !app.signup;
-//                         // ui_signup(terminal, app);
-//                     } else if user_choice == 1 {
-//                         terminal.show_cursor()?;
-//                         // app.signup = !app.signup;
-//                         // ui_signup(terminal, app);
-//                     } else  {
-//                         disable_raw_mode()?;
-//                         terminal.show_cursor()?;
-//                         return Ok(())
-//                     }
-//                 }
-//                 KeyCode::Char('a') => app.signup = !app.signup,
-//                 KeyCode::Char('j') => {
-//                     if user_choice < 2 {
-//                         user_choice += 1;
-//                     }
-//                 }
-//                 KeyCode::Char('k') => {
-//                     if user_choice > 0 {
-//                         user_choice -= 1;
-//                     }
-//                 }
-//                 _ => {}
-//             }
-//         }
-//     }         
-// }
-
-// // Check if we get the input
-// fn _ui_signup<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
-
-//     // let normal_mode = UserMode::Normal;
-//     // let insert_mode = UserMode::Insert;
-//     let mut user_choice = 0;
-//     let mut input = String::new();
-//     let prompt = ">> ";
-//     loop {
-
-//         terminal.draw(|f| ui::signup::ui(f, &app, prompt, &input, user_choice))?;
-
-//         if let Event::Key(key) = event::read()? {
-//             match app.user_mode {
-//                 UserMode::Normal => match key.code {
-//                     KeyCode::Char('q') | KeyCode::Esc => {
-//                         disable_raw_mode()?;
-//                         terminal.show_cursor()?;
-//                         return Ok(())
-//                     } 
-//                     KeyCode::Char('i') => {
-//                         app.user_mode = UserMode::Insert;
-//                     }
-//                     KeyCode::Char('j') => {
-//                         if user_choice < 1 {
-//                             user_choice += 1;
-//                         }
-//                     }
-//                     KeyCode::Char('k') => {
-//                         if user_choice > 0 {
-//                             user_choice -= 1;
-//                         }
-//                     }
-//                     _ => {}
-//                 }
-//                 UserMode::Insert => match key.code {
-//                     KeyCode::Esc => {
-//                         app.user_mode = UserMode::Normal;
-//                     }
-//                     KeyCode::Char('q') => {
-//                         disable_raw_mode()?;
-//                         terminal.show_cursor()?;
-//                         return Ok(())
-//                     } 
-//                     KeyCode::Char(c) => {
-//                         input.push(c);
-//                     }
-//                     KeyCode::Backspace => {
-//                         input.pop();
-//                     }
-//                     KeyCode::Enter => {
-//                         terminal.show_cursor()?;
-//                         return Ok(())
-//                     }
-//                     _ => {}
-//                 }
-//             }
-
-//             KeyCode::Backspace => todo!(),
-//             KeyCode::Enter => todo!(),
-//             KeyCode::Left => todo!(),
-//             KeyCode::Right => todo!(),
-//             KeyCode::Up => todo!(),
-//             KeyCode::Down => todo!(),
-//             KeyCode::Home => todo!(),
-//             KeyCode::End => todo!(),
-//             KeyCode::PageUp => todo!(),
-//             KeyCode::PageDown => todo!(),
-//             KeyCode::Tab => todo!(),
-//             KeyCode::BackTab => todo!(),
-//             KeyCode::Delete => todo!(),
-//             KeyCode::Insert => todo!(),
-//             KeyCode::F(_) => todo!(),
-//             KeyCode::Null => todo!(),
-//             KeyCode::Esc => todo!(),
-//             KeyCode::CapsLock => todo!(),
-//             KeyCode::ScrollLock => todo!(),
-//             KeyCode::NumLock => todo!(),
-//             KeyCode::PrintScreen => todo!(),
-//             KeyCode::Pause => todo!(),
-//             KeyCode::Menu => todo!(),
-//             KeyCode::KeypadBegin => todo!(),
-//             KeyCode::Media(_) => todo!(),
-//             KeyCode::Modifier(_) => todo!(),
-
-//         }
-//     }
-// }
-
-
-
-
-
 

@@ -1,10 +1,25 @@
-// pub const MENU_ADMIN: [&str; 5] = ["Welcome", "Sign Up", "Login", "Notepad", "Credential Manager"];
-// pub const MENU_GRANTED: [&str; 3] = ["Welcome", "Notepad", "Credential Manager"];
-// pub const MENU_RESTRICTED: [&str; 3] = ["Welcome", "Sign Up", "Login"];
-// pub const SIGNUP_AUTH: [&str; 2] = ["Username", "Password"];
-// pub const LOGIN_AUTH: [&str; 2] = ["Username", "Password"];
-// pub const CREDENTIAL: [&str; 3] = ["App", "Username", "Password"];
-// pub const LOGS: [&str; 3] = ["Info", "Warning", "Critical"];
+pub const SYSTEM: [&str; 5] = 
+[
+    "Welcome", 
+    "Sign Up", 
+    "Login", 
+    "Notepad", 
+    "Credential Manager"
+];
+
+pub const MEMBER: [&str; 3] = 
+[
+    "Welcome", 
+    "Notepad", 
+    "Credential Manager"
+];
+
+pub const VISITOR: [&str; 3] = 
+[
+    "Welcome", 
+    "Sign Up", 
+    "Login"
+];
 
 pub const INSTRUCTIONS: &str = r#"{
     u:      Yank (copy) the username
@@ -50,20 +65,3 @@ pub const ENROLMENT_INSTRUCTIONS: &str = r#"
                steps outlined are being followed.
 
 "#;
-
-// pub enum UserMode {
-//     Normal,
-//     Insert,
-//     Username,
-//     Password,
-// }
-
-// pub enum SignUp {
-//     Username,
-//     Password,
-// }
-
-// pub enum Login {
-//     Username,
-//     Password,
-// }
