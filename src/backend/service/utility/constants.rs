@@ -21,14 +21,14 @@ pub const VISITOR: [&str; 3] =
     "Login"
 ];
 
-pub const INSTRUCTIONS: &str = r#"{
+pub const INSTRUCTIONS: &str = r#"
     u:      Yank (copy) the username
     y:      Yank (copy) the password
     e:      Modify the record
     j:      Go to next field
     k:      Go to prev field
   Esc:      Exit insert mode 
-}"#;
+"#;
 
 pub const ENROLMENT_INSTRUCTIONS: &str = r#"
 

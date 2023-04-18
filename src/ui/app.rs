@@ -20,7 +20,7 @@ pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 
     // Render object
     // f.render_widget(tabs, chunks[0]);
-    if app.user.signed_in{
+    if app.user.signed_in {
 
         // All granted tabs with their respective titles
         // temp stuff : TODO link this to actual feature component
@@ -28,7 +28,7 @@ pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
             .tabs_granted
             .titles
             .iter()
-            .map(|t| Spans::from(Span::styled(*t, Style::default().fg(Color::Yellow))))
+            .map(|t| Spans::from(Span::styled(*t, Style::default().fg(Color::White))))
             .collect();
         let tabs_granted = Tabs::new(granted_titles)
             .block(Block::default().borders(Borders::ALL).title("System"))
@@ -51,7 +51,7 @@ pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
             .tabs_restricted
             .titles
             .iter()
-            .map(|t| Spans::from(Span::styled(*t, Style::default().fg(Color::Yellow))))
+            .map(|t| Spans::from(Span::styled(*t, Style::default().fg(Color::White))))
             .collect();
         let tabs_restricted = Tabs::new(restricted_titles)
             .block(Block::default().borders(Borders::ALL).title("System"))

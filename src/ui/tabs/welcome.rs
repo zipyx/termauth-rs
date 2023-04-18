@@ -1,6 +1,6 @@
 use tui::{backend::Backend, Frame, 
     layout::{Rect, Constraint, Layout, Direction, Alignment}, 
-    widgets::Paragraph,
+    widgets::{Paragraph, Wrap},
     style::{Style, Color}
 };
 
@@ -34,7 +34,7 @@ pub fn draw_welcome<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     draw_help_welcome(f, app, chunks[2]);
 }
 
-fn draw_welcome_block<B: Backend>(f: &mut Frame<B>, _app: &mut App, area: Rect) {
+fn draw_welcome_block<B: Backend>(f: &mut Frame<B>,app: &mut App, area: Rect) {
 
     let chunks = Layout::default()
         .constraints(
@@ -53,7 +53,9 @@ fn draw_welcome_block<B: Backend>(f: &mut Frame<B>, _app: &mut App, area: Rect) 
 
         let instruction = Paragraph::new(ENROLMENT_INSTRUCTIONS)
             .style(Style::default().fg(Color::Green))
-            .alignment(Alignment::Left);
+            .alignment(Alignment::Left)
+            // .wrap(Wrap { trim: true })
+            .scroll((app.scroll, 0));
 
         f.render_widget(instruction, chunks[0]);
     }
