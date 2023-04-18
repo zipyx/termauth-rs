@@ -3,9 +3,10 @@ use tui::{backend::Backend, Frame,
     widgets::{Paragraph, Block, Borders, BorderType}, 
     style::{Style, Color}
 };
-use crate::{App, component::block::centered_rect_a, backend};
+use crate::{App, component::block::centered_rect_a, 
+    backend::service::user::CredentialManager
+};
 use super::utility::helper::draw_help_welcome;
-use backend::service::user::UserMode;
 
 pub fn draw_credential_manager<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
 
@@ -39,36 +40,31 @@ fn draw_credential_manager_block<B: Backend>(f: &mut Frame<B>, app: &mut App, ar
     let username_pos = Rect::new(app_pos.left(), app_pos.bottom(), app_pos.width, 4);
     let password_pos = Rect::new(username_pos.left(), username_pos.bottom(), username_pos.width, 4);
 
-    // TODO: connect to app account rather than quick below
-    let a = "";
-    let b = "";
-    let c = "";
-
     // let app_input = Paragraph::new(app.new_user_app.as_ref())
-    let app_input = Paragraph::new(a.as_ref())
+    let app_input = Paragraph::new(app.user.app_name.as_ref())
         .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).title("App"))
-        .style(match app.user_mode {
-            UserMode::Insert => Style::default().fg(Color::Magenta),
+        .style(match app.user.app {
+            CredentialManager::App => Style::default().fg(Color::Magenta),
             _ => Style::default(),
         });
 
     f.render_widget(app_input, app_pos);
 
     // let username_input = Paragraph::new(app.new_user_username.as_ref())
-    let username_input = Paragraph::new(b.as_ref())
+    let username_input = Paragraph::new(app.user.app_username.as_ref())
         .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).title("Username"))
-        .style(match app.user_mode {
-            UserMode::Insert => Style::default().fg(Color::Magenta),
+        .style(match app.user.app {
+            CredentialManager::Username => Style::default().fg(Color::Magenta),
             _ => Style::default(),
         });
 
     f.render_widget(username_input, username_pos);
 
     // let password_input = Paragraph::new(app.new_user_password.as_ref())
-    let password_input = Paragraph::new(c.as_ref())
+    let password_input = Paragraph::new(app.user.app_password.as_ref())
         .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).title("Password"))
-        .style(match app.user_mode {
-            UserMode::Insert => Style::default().fg(Color::Magenta),
+        .style(match app.user.app {
+            CredentialManager::Password => Style::default().fg(Color::Magenta),
             _ => Style::default(),
         });
 

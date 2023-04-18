@@ -47,7 +47,7 @@ fn draw_notepad_block<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
             ].as_ref(),
         ).split(area);
 
-    let (msg, style) = match app.user_mode {
+    let (msg, style) = match app.user.user_mode {
         UserMode::Normal => (
             vec![
                 Span::raw("You are now in "),
@@ -79,19 +79,19 @@ fn draw_notepad_block<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     f.render_widget(help_message, chunks[0]);
 
     // Get the user input and display style associated with different modes
-    let username_input = Paragraph::new(app.input.as_ref())
-        .style(match app.user_mode {
+    let username_input = Paragraph::new(app.user.scratchpad.as_ref())
+        .style(match app.user.user_mode {
             UserMode::Insert => Style::default().fg(Color::Magenta),
             _ => Style::default(),
         }).block(Block::default().borders(Borders::ALL).title("Input"));
 
     f.render_widget(username_input, chunks[1]);
 
-    match app.user_mode {
+    match app.user.user_mode {
         UserMode::Insert => {
             f.set_cursor
                 (
-                    chunks[1].x + app.input.len() as u16 + 1,
+                    chunks[1].x + app.user.scratchpad.len() as u16 + 1,
                     chunks[1].y + 1,
                 )
         }
@@ -101,6 +101,7 @@ fn draw_notepad_block<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     let utc: DateTime<Local> = Local::now();
 
     let credentials: Vec<ListItem> = app
+        .user
         .notepad
         .iter()
         .enumerate()

@@ -1,12 +1,12 @@
 use tui::{backend::Backend, Frame, 
     layout::{Rect, Constraint, Layout}, 
     widgets::{Block, Borders, BorderType, Paragraph}, 
-    style::{Style, Color}
+    style::{Style, Color, Modifier}, text::{Span, Text, Spans}
 };
 
 use crate::{
     App,
-    backend::service::user::SignUp,
+    backend::service::user::{SignUp, UserMode},
     component::block::centered_rect_a};
 use super::utility::helper::draw_help_welcome;
 
@@ -42,9 +42,9 @@ fn draw_signup_block<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     let password_pos = Rect::new(username_pos.left(), username_pos.bottom(), username_pos.width, 3);
 
     // username block
-    let username_input = Paragraph::new(app.new_username.as_ref())
+    let username_input = Paragraph::new(app.user.signup_username.as_ref())
         .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).title("Username"))
-        .style(match app.signup {
+        .style(match app.user.signup {
             SignUp::Username => Style::default().fg(Color::Yellow),
             _ => Style::default(),
         });
@@ -52,9 +52,9 @@ fn draw_signup_block<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     f.render_widget(username_input, username_pos);
 
     // password block
-    let password_input = Paragraph::new(app.new_password.as_ref())
+    let password_input = Paragraph::new(app.user.signup_password.as_ref())
         .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).title("Password"))
-        .style(match app.signup {
+        .style(match app.user.signup {
             SignUp::Password => Style::default().fg(Color::Yellow),
             _ => Style::default(),
         });

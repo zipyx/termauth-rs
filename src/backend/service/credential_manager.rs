@@ -60,5 +60,4 @@ impl Manager for Credential {
     fn get_password(&self) -> String {
         self.password.clone()
     }
-
 }

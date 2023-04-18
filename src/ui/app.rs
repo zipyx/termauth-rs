@@ -20,7 +20,7 @@ pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 
     // Render object
     // f.render_widget(tabs, chunks[0]);
-    if app.signed_in{
+    if app.user.signed_in{
 
         // All granted tabs with their respective titles
         // temp stuff : TODO link this to actual feature component

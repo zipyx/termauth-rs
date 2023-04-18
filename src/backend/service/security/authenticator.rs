@@ -1,5 +1,7 @@
 use bcrypt::{hash_with_salt, verify, DEFAULT_COST};
+use super::database::Database;
 use rand::Rng;
+use uuid::{Uuid, Builder};
 
 // Traits of an account verifier
 trait Verifier {
@@ -8,22 +10,36 @@ trait Verifier {
     fn validate_password(&self, password: String) -> bool;
 }
 
+// Traits of an account id
+// trait Uuid {
+//     fn generate_uuid(&self) -> dyn Uuid;
+// }
+
+// Traits of an account username
+trait Username {
+    fn set_username(&mut self, username: String, new_username: String) -> bool;
+}
+
 // Traits of an account password
 trait Password {
     fn generate_salt(&self) -> [u8; 16];
     fn hash_password(&self, password: String) -> String;
     fn encrypt_password(&self, password: String) -> String;
     fn compare_password(&self, password: String, hash: String) -> bool;
-    fn change_password(&self, password: String, new_password: String) -> bool;
+    fn set_password(&self, password: String, new_password: String) -> bool;
 }
 
-// Traits of an account username
-trait Username {
-    fn change_username(&mut self, username: String, new_username: String) -> bool;
-}
 
 // These traits together are what creates our credential
-trait Credential: Verifier + Password + Username {}
+pub trait Credential: Verifier + Password + Username {
+    fn new() -> Self;
+    // fn validate_account(&mut self, username: String, password: String) -> bool;
+    fn login(&mut self, username: String, password: String) -> bool;
+    fn create_account(&mut self, username: String, password: String) -> bool;
+    fn change_account(&mut self, username: String, password: String, new_username: String, new_password: String) -> bool;
+    fn change_username(&mut self, username: String, new_username: String) -> bool;
+    fn change_password(&self, password: String, new_password: String) -> bool;
+}
 
 // Build our account struct
 pub struct Account {
@@ -94,7 +110,7 @@ impl Password for Account {
         verify(password, &hash).unwrap()
     }
 
-    fn change_password(&self, password: String, new_password: String) -> bool {
+    fn set_password(&self, password: String, new_password: String) -> bool {
         // check and confirm hash matches with pass
         let check = self.validate_password(password.clone());
         let hash = self.hash_password(password);
@@ -112,7 +128,7 @@ impl Password for Account {
 
 // Implement the username behavior of our credential
 impl Username for Account {
-    fn change_username(&mut self, username: String, new_username: String) -> bool {
+    fn set_username(&mut self, username: String, new_username: String) -> bool {
         // TODO: connect database to update record
         // - get salt from database 
         self.username = new_username;
@@ -120,53 +136,42 @@ impl Username for Account {
     }
 }
 
-// A person has an account
-enum Person {
-    Account(Account),
-}
+impl Credential for Account {
 
-// Implement a method for a person to change their account properties
-impl Person {
-    
-    // A person can create an account
+    fn new() -> Self {
+        Account {
+            username: String::new(),
+            password: String::new(),
+        }
+    }
+
+    fn login(&mut self, username: String, password: String) -> bool {
+        // self.validate_account(username, password);
+        self.username = username;
+        self.password = self.hash_password(password);
+        true
+    }
+
     fn create_account(&mut self, username: String, password: String) -> bool {
-        match self {
-            Person::Account(account) => {
-                account.username = username;
-                account.password = account.hash_password(password);
-            }
-        }
+        // self.id.
+        self.username = username;
+        self.password = self.hash_password(password);
         true
     }
 
-    // A person can change their username and password
     fn change_account(&mut self, username: String, password: String, new_username: String, new_password: String) -> bool {
-        match self {
-            Person::Account(account) => {
-                account.change_username(username, new_username);
-                account.change_password(password, new_password);
-            }
-        }
+        self.set_username(username, new_username);
+        self.set_password(password, new_password);
         true
     }
 
-    // A person can change their username
     fn change_username(&mut self, username: String, new_username: String) -> bool {
-        match self {
-            Person::Account(account) => {
-                account.change_username(username, new_username);
-            }
-        }
+        self.set_username(username, new_username);
         true
     }
 
-    // A person can change their password
     fn change_password(&self, password: String, new_password: String) -> bool {
-        match self {
-            Person::Account(account) => {
-                account.change_password(password, new_password);
-            }
-        }
+        self.set_password(password, new_password);
         true
     }
 }
