@@ -483,3 +483,46 @@
 //         }
 //     }
 // }
+// fn login(&mut self, username: String, password: String) -> bool {
+//     match self {
+//         Auth::Account(account) => {
+//             account.validate_account(username, password)
+//         }
+//     }
+// }
+
+// // A person can create an account
+// fn create_account(&mut self, username: String, password: String) -> bool {
+//     match self {
+//         Auth::Account(account) => {
+//             account.create_account(username, password)
+//         }
+//     }
+// }
+
+// // A person can change their username and password
+// fn change_account(&mut self, username: String, password: String, new_username: String, new_password: String) -> bool {
+//     match self {
+//         User::Account(account) => {
+//             account.change_account(username, password, new_username, new_password)
+//         }
+//     }
+// }
+
+// // A person can change their username
+// fn change_username(&mut self, username: String, new_username: String) -> bool {
+//     match self {
+//         User::Account(account) => {
+//             account.change_username(username, new_username)
+//         }
+//     }
+// }
+
+// // A person can change their password
+// fn change_password(&self, password: String, new_password: String) -> bool {
+//     match self {
+//         User::Account(account) => {
+//             account.change_password(password, new_password)
+//         }
+//     }
+// }

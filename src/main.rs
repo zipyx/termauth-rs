@@ -38,9 +38,22 @@ impl <'a>App<'a> {
         }
     }
 
-    fn tick(&mut self) {
+    fn scroll_down(&mut self) {
+        // Stop scrolling at u16: 15
+        if self.scroll == 15 {
+            return;
+        }
         self.scroll += 1;
-        self.scroll %= 50;
+        self.scroll %= 100;
+    }
+
+    fn scroll_up(&mut self) {
+        // Stop scrolling at u16: 0
+        if self.scroll == 0 {
+        } else {
+            self.scroll -= 1;
+            self.scroll %= 100;
+        }
     }
 
     fn on_up_info(&mut self) {
@@ -299,6 +312,19 @@ fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Durat
                 if app.tabs_restricted.index == 0 {
                     match app.user.user_mode {
                         UserMode::Normal => match key.code {
+                            KeyCode::Char('j') => {
+                                if last_tick + tick_rate <= Instant::now() {
+                                    app.scroll_down();
+                                    last_tick = Instant::now();
+                                }
+                            }
+
+                            KeyCode::Char('k') => {
+                                if last_tick + tick_rate <= Instant::now() {
+                                    app.scroll_up();
+                                    last_tick = Instant::now();
+                                }
+                            }
                             KeyCode::Char('h') => app.on_left(),
                             KeyCode::Char('l') => app.on_right(),
                             KeyCode::Char('q') | KeyCode::Esc => {
@@ -494,10 +520,10 @@ fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Durat
         }
 
 
-        if last_tick + tick_rate <= Instant::now() {
-            app.tick();
-            last_tick = Instant::now();
-        }
+        // if last_tick + tick_rate <= Instant::now() {
+        //     app.tick();
+        //     last_tick = Instant::now();
+        // }
     }
 }
 

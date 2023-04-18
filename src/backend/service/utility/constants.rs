@@ -30,7 +30,7 @@ pub const INSTRUCTIONS: &str = r#"
   Esc:      Exit insert mode 
 "#;
 
-pub const ENROLMENT_INSTRUCTIONS: &str = r#"
+pub static ENROLMENT_INSTRUCTIONS: &str = r#"
 
         1) Enrollment:
         ----------------
