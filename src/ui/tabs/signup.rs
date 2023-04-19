@@ -1,14 +1,14 @@
 use tui::{backend::Backend, Frame, 
     layout::{Rect, Constraint, Layout}, 
     widgets::{Block, Borders, BorderType, Paragraph}, 
-    style::{Style, Color, Modifier}, text::{Span, Text, Spans}
+    style::{Style, Color},
 };
 
 use crate::{
     App,
-    backend::service::user::{SignUp, UserMode},
+    backend::service::user::SignUp,
     component::block::centered_rect_a};
-use super::utility::helper::draw_help_welcome;
+use super::utility::helper::draw_help_signup;
 
 pub fn draw_signup<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
 
@@ -32,7 +32,7 @@ pub fn draw_signup<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     //     ).split(area);
 
     draw_signup_block(f, app, chunks[1]);
-    draw_help_welcome(f, app, chunks[2]);
+    draw_help_signup(f, app, chunks[2]);
 
 }
 
@@ -45,7 +45,7 @@ fn draw_signup_block<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     let username_input = Paragraph::new(app.user.signup_username.as_ref())
         .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).title("Username"))
         .style(match app.user.signup {
-            SignUp::Username => Style::default().fg(Color::Yellow),
+            SignUp::Username => Style::default().fg(Color::LightBlue),
             _ => Style::default(),
         });
 
@@ -55,7 +55,7 @@ fn draw_signup_block<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     let password_input = Paragraph::new(app.user.signup_password.as_ref())
         .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).title("Password"))
         .style(match app.user.signup {
-            SignUp::Password => Style::default().fg(Color::Yellow),
+            SignUp::Password => Style::default().fg(Color::LightBlue),
             _ => Style::default(),
         });
 

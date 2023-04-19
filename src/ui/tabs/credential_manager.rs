@@ -40,17 +40,15 @@ fn draw_credential_manager_block<B: Backend>(f: &mut Frame<B>, app: &mut App, ar
     let username_pos = Rect::new(app_pos.left(), app_pos.bottom(), app_pos.width, 4);
     let password_pos = Rect::new(username_pos.left(), username_pos.bottom(), username_pos.width, 4);
 
-    // let app_input = Paragraph::new(app.new_user_app.as_ref())
     let app_input = Paragraph::new(app.user.app_name.as_ref())
         .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).title("App"))
-        .style(match app.user.app {
-            CredentialManager::App => Style::default().fg(Color::Magenta),
-            _ => Style::default(),
+        .style( match app.user.app {
+                CredentialManager::App => Style::default().fg(Color::Magenta),
+                _ => Style::default(),
         });
 
     f.render_widget(app_input, app_pos);
 
-    // let username_input = Paragraph::new(app.new_user_username.as_ref())
     let username_input = Paragraph::new(app.user.app_username.as_ref())
         .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).title("Username"))
         .style(match app.user.app {
@@ -60,7 +58,6 @@ fn draw_credential_manager_block<B: Backend>(f: &mut Frame<B>, app: &mut App, ar
 
     f.render_widget(username_input, username_pos);
 
-    // let password_input = Paragraph::new(app.new_user_password.as_ref())
     let password_input = Paragraph::new(app.user.app_password.as_ref())
         .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).title("Password"))
         .style(match app.user.app {

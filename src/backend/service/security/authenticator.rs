@@ -1,4 +1,6 @@
 use bcrypt::{hash_with_salt, verify, DEFAULT_COST};
+use regex::Regex;
+use unicode_normalization::UnicodeNormalization;
 use super::database::Database;
 use rand::Rng;
 use uuid::{Uuid, Builder};
@@ -17,11 +19,13 @@ trait Verifier {
 
 // Traits of an account username
 trait Username {
+
     fn set_username(&mut self, username: String, new_username: String) -> bool;
 }
 
 // Traits of an account password
 trait Password {
+
     fn generate_salt(&self) -> [u8; 16];
     fn hash_password(&self, password: String) -> String;
     fn encrypt_password(&self, password: String) -> String;
@@ -32,6 +36,7 @@ trait Password {
 
 // These traits together are what creates our credential
 pub trait Credential: Verifier + Password + Username {
+
     fn new() -> Self;
     // fn validate_account(&mut self, username: String, password: String) -> bool;
     fn login(&mut self, username: String, password: String) -> bool;
@@ -49,6 +54,7 @@ pub struct Account {
 
 /// A password behviour for an account
 impl Verifier for Account {
+
     fn validate_account(&self, username: String, password: String) -> bool {
         // TODO: Pull record from database, and compare password
         // proper validation should be done here
@@ -58,12 +64,32 @@ impl Verifier for Account {
     fn validate_username(&self, username: String) -> bool {
         // TODO: Pull username from database, and compare
         // proper validation should be done here
-        true
+        let regex_pattern = r"^[a-zA-Z0-9_]+$";
+        let normalization = username.nfkd().collect::<String>();
+        let re = Regex::new(regex_pattern).unwrap();
+
+        if re.is_match(&normalization) {
+            true
+        } else {
+            false
+        }
     }
 
     fn validate_password(&self, password: String) -> bool {
         // TODO: Pull password from database, and compare with hash
         // proper validation should be done here
+        
+        // Password length must be between 8 - 64 characters long
+        // Complexity really is about length rather than mix of characters 
+        // Password composition allow for printable characters as well as spaces, unicode
+        // characters etc. Avoid using "spaces" and tabs in the password.
+        // Use weak password text to verify against
+        // Do not provide password hints to the user 
+        // Implement rate limiting mechanisms to prevent brute force attacks (max 3)
+        // Password expiration, store using bcrypt, script, argon2
+
+        let check_password_length = password.len() >= 8 && password.len() <= 64;
+
         true
     }
 }

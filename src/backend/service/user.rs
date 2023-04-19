@@ -1,9 +1,5 @@
-// use std::fs::File;
-// use std::io::Write;
-// use regex::Regex;
-// use crate::component::state::StateList;
-
-use super::security::authenticator::{Account, Credential};
+use crate::component::state::TabsState;
+use super::{security::authenticator::{Account, Credential}, utility::constants::{VISITOR, MEMBER}};
 
 pub enum UserMode {
     Normal,
@@ -29,20 +25,20 @@ pub enum CredentialManager {
     Password,
 }
 
-const SIGNUP_AUTH: [&str; 2] = ["Username", "Password"];
-
 // A person has an account
 enum Auth {
     Account(Account),
 }
 
-
-pub struct User {
+// A user has an account
+pub struct User<'a> {
     account: Account,
     auth: Auth,
     pub app: CredentialManager,
     pub app_name: String,
     pub app_password: String,
+    app_search_list: Vec<String>,
+    app_search_query: String,
     pub app_secure_password: String,
     pub app_username: String,
     pub login: Login,
@@ -57,24 +53,26 @@ pub struct User {
     pub signup_secure_password: String,
     pub signup: SignUp,
     pub signup_username: String,
+    pub tab: TabsState<'a>,
     pub user_mode: UserMode,
-    search_list: Vec<String>,
-    search_query: String,
 }
 
 // Implement a method for a person to change their account properties
-impl User {
+impl <'a>User<'a> {
 
     // pub fn new() -> Auth {
     //     Auth::Account(Account::new())
     // }
 
     /// ... Instantiate a new user with properties
-    pub fn new() -> User {
+    pub fn new() -> User<'a> {
+
         User {
             account: Account::new(),
             app: CredentialManager::App,
             app_name: String::new(),
+            app_search_list: Vec::new(),
+            app_search_query: String::new(),
             app_secure_password: String::new(),
             app_password: String::new(),
             app_username: String::new(),
@@ -85,14 +83,13 @@ impl User {
             login_username: String::new(),
             notepad: Vec::new(),
             scratchpad: String::new(),
-            search_list: Vec::new(),
-            search_query: String::new(),
             secure_password: String::new(),
             signed_in: false,
             signup_password: String::new(),
             signup_secure_password: String::new(),
             signup: SignUp::Username,
             signup_username: String::new(),
+            tab: TabsState::new(VISITOR.to_vec()),
             user_mode: UserMode::Normal,
         }
     }
@@ -119,6 +116,7 @@ impl User {
 
     /// ... Login to an account using provided credentials
     pub fn login(&mut self, username: String, password: String) -> bool {
+        self.tab = TabsState::new(MEMBER.to_vec());
         self.account.login(username, password)
     }
 
@@ -154,6 +152,9 @@ impl User {
 
     /// ... Create an account
     pub fn create_account(&mut self, username: String, password: String) -> bool {
+        self.tab.index = 0;
+        self.user_mode = UserMode::Normal;
+        self.tab = TabsState::new(MEMBER.to_vec());
         self.account.create_account(username, password)
     }
 
@@ -172,48 +173,5 @@ impl User {
         self.account.change_password(password, new_password)
     }
 
-    // fn login(&mut self, username: String, password: String) -> bool {
-    //     match self {
-    //         Auth::Account(account) => {
-    //             account.validate_account(username, password)
-    //         }
-    //     }
-    // }
-    
-    // // A person can create an account
-    // fn create_account(&mut self, username: String, password: String) -> bool {
-    //     match self {
-    //         Auth::Account(account) => {
-    //             account.create_account(username, password)
-    //         }
-    //     }
-    // }
-
-    // // A person can change their username and password
-    // fn change_account(&mut self, username: String, password: String, new_username: String, new_password: String) -> bool {
-    //     match self {
-    //         User::Account(account) => {
-    //             account.change_account(username, password, new_username, new_password)
-    //         }
-    //     }
-    // }
-
-    // // A person can change their username
-    // fn change_username(&mut self, username: String, new_username: String) -> bool {
-    //     match self {
-    //         User::Account(account) => {
-    //             account.change_username(username, new_username)
-    //         }
-    //     }
-    // }
-
-    // // A person can change their password
-    // fn change_password(&self, password: String, new_password: String) -> bool {
-    //     match self {
-    //         User::Account(account) => {
-    //             account.change_password(password, new_password)
-    //         }
-    //     }
-    // }
 }
 

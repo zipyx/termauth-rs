@@ -30,7 +30,7 @@ pub const INSTRUCTIONS: &str = r#"
   Esc:      Exit insert mode 
 "#;
 
-pub static ENROLMENT_INSTRUCTIONS: &str = r#"
+pub const ENROLMENT_INSTRUCTIONS: &str = r#"
 
         1) Enrollment:
         ----------------
@@ -63,5 +63,17 @@ pub static ENROLMENT_INSTRUCTIONS: &str = r#"
             A. In the verification, there is a prompt, depending on the validity of your verification
                you will either receive a success or failure message. This is to ensure that the 
                steps outlined are being followed.
+
+        3) References:
+        ----------------
+
+            A. The following links were used to help create this application:
+
+                - NIST Password Guidelines:
+                    https://pages.nist.gov/800-63-3/sp800-63b.html#sec5
+                    
+                - Normalization:
+                    [crate normalization]        | https://docs.rs/unicode-normalization/latest/unicode_normalization/
+                    [unicode standard annex #15] | http://www.unicode.org/reports/tr15/
 
 "#;
