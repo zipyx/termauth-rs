@@ -1,4 +1,7 @@
+use std::{fs::File, io::{BufReader, BufRead}, collections::HashSet};
+
 use bcrypt::{hash_with_salt, verify, DEFAULT_COST};
+use rustrict::{CensorStr, CensorIter};
 use regex::Regex;
 use unicode_normalization::UnicodeNormalization;
 use super::database::Database;
@@ -7,9 +10,12 @@ use uuid::{Uuid, Builder};
 
 // Traits of an account verifier
 trait Verifier {
+    fn read_file(&self, file: &str) -> Vec<String>;
+    fn read_file_hashset(&self, file: &str) -> HashSet<String>;
     fn validate_account(&self, username: String, password: String) -> bool;
     fn validate_username(&self, username: String) -> bool;
     fn validate_password(&self, password: String) -> bool;
+    fn validate_swear_words_regex_pattern_match(&self, text: String) -> bool;
 }
 
 // Traits of an account id
@@ -62,24 +68,41 @@ impl Verifier for Account {
     }
 
     fn validate_username(&self, username: String) -> bool {
-        // TODO: Pull username from database, and compare
-        // proper validation should be done here
+
+        // Implement regex filter from requirements
         let regex_pattern = r"^[a-zA-Z0-9_]+$";
-        let normalization = username.nfkd().collect::<String>();
+        // Normalize the username being passed
+        let normalization = username.nfkd().nfkc().nfd().filter(|c| c.is_alphanumeric()).collect::<String>();
         let re = Regex::new(regex_pattern).unwrap();
 
+        // if first rule of regex filter doesn't work return false immediately as 
+        // requirements are not met
         if re.is_match(&normalization) {
-            true
-        } else {
-            false
+
+            // Speed of (o(n^2)) - not ideal using regex expressions
+            // return self.validate_swear_words_regex_pattern_match(normalization)
+
+            // Speed of o(n) - better choice integration with std library
+            return normalization.is_inappropriate()
         }
+        false
     }
 
     fn validate_password(&self, password: String) -> bool {
         // TODO: Pull password from database, and compare with hash
         // proper validation should be done here
         
-        // Password length must be between 8 - 64 characters long
+        // 9 rules to follow
+        // 1 - Password length must be between 8 - 64 characters long
+        // 2 - Check passwords against a list of known weak passwords / blacklist
+        // 3 - Make special characters optional
+        // 4 - Provide the user feedback on password attempts if they fail and why
+        // 5 - Do not provide password hints
+        // 6 - Implement rate limiting mechanisms to prevent brute force attacks
+        // 7 - Use password managers safely, or create one yourself :)
+        // 8 - Change password only when neccessary
+        // 9 - Store passwords in offline - attack - resistant forms.
+        // ===============================================================================
         // Complexity really is about length rather than mix of characters 
         // Password composition allow for printable characters as well as spaces, unicode
         // characters etc. Avoid using "spaces" and tabs in the password.
@@ -88,8 +111,55 @@ impl Verifier for Account {
         // Implement rate limiting mechanisms to prevent brute force attacks (max 3)
         // Password expiration, store using bcrypt, script, argon2
 
+        // 1 - Check password length between 8 - 64 characters long
         let check_password_length = password.len() >= 8 && password.len() <= 64;
 
+        // 2 - Check passwords against a list of known weak passwords / blacklist
+        let weak_passwords = self.read_file_hashset("weakpasswords.txt");
+        let breached_passwords = self.read_file_hashset("breachedpasswords.txt");
+
+        // if 1st rule is met, check for second rule and return true if both are met
+        if check_password_length && !weak_passwords.contains(&password) && !breached_passwords.contains(&password) {
+            return true
+        }
+
+        // 3 - Make special characters optional - Do nothing here
+        // 4 - Provide the user feedback on password attempts if they fail and why - Do this in the
+        //   UI layer
+        // 5 - Do not provide password hints - Do nothing here
+        // 6 - Implement rate limiting checks
+
+        false
+    }
+
+    fn read_file(&self, file_name: &str) -> Vec<String> {
+
+        let mut list = Vec::new();
+        let file = File::open(file_name).unwrap();
+        let reader = BufReader::new(file);
+        for line in reader.lines() {
+            list.push(line.unwrap());
+        }
+        list
+    }
+
+    fn read_file_hashset(&self, file_name: &str) -> HashSet<String> {
+
+        let file = File::open(file_name).unwrap();
+        let reader = BufReader::new(file);
+        let list: HashSet<String> = reader.lines().map(|line| line.unwrap()).collect();
+
+        return list
+    }
+
+    fn validate_swear_words_regex_pattern_match(&self, text: String) -> bool {
+        let filter_patterns = self.read_file("regex.txt");
+        for pattern in filter_patterns {
+            let re = Regex::new(pattern.as_str()).unwrap();
+            if re.is_match(text.as_str()) {
+                return false;
+            }
+        }
         true
     }
 }

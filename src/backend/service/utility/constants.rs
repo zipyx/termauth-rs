@@ -67,7 +67,7 @@ pub const ENROLMENT_INSTRUCTIONS: &str = r#"
         3) References:
         ----------------
 
-            A. The following links were used to help create this application:
+            A. The following links and references were used to help inspire and create this application:
 
                 - NIST Password Guidelines:
                     https://pages.nist.gov/800-63-3/sp800-63b.html#sec5
@@ -75,5 +75,15 @@ pub const ENROLMENT_INSTRUCTIONS: &str = r#"
                 - Normalization:
                     [crate normalization]        | https://docs.rs/unicode-normalization/latest/unicode_normalization/
                     [unicode standard annex #15] | http://www.unicode.org/reports/tr15/
+
+                - Regex (swear words filtering)
+                    [badwords filter repository] | https://github.com/mogade/badwords
+                
+                - Restriction (swear words filtering)
+                    [restriction]                | https://github.com/finnbear/rustrict/tree/master
+                
+                - Rate Limiting:
+                    [rate limiting]              | https://docs.rs/ratelimit/latest/ratelimit/struct.Ratelimiter.html
+
 
 "#;
