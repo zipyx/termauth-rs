@@ -619,3 +619,83 @@
 //     }
 
 // }
+
+
+
+// ##################################################################
+// ##################################################################
+// ##################################################################
+// ##################################################################
+// ##################################################################
+// // Welcome
+// if app.user.tab.index == 0 {
+
+//     match app.user.user_mode {
+
+//         // ##################################################################
+//         // ##################################################################
+//         UserMode::Normal => match key.code {
+//             KeyCode::Char('h') => app.on_left(),
+//             KeyCode::Char('l') => app.on_right(),
+//             KeyCode::Char('q') | KeyCode::Esc => {
+//                 disable_raw_mode()?;
+//                 terminal.show_cursor()?;
+//                 return Ok(())
+//             }
+
+//             _ => {}
+//         }
+
+//         _ => {}
+//     } // match parent
+
+// } 
+// if app.user.tab.index == 1 && app.user.signed_in {
+
+//     match app.user.user_mode {
+
+//         // ##################################################################
+//         // ##################################################################
+//         UserMode::Normal => match key.code {
+//             KeyCode::Char('h') => app.on_left(),
+//             KeyCode::Char('l') => app.on_right(),
+//             KeyCode::Char('q') | KeyCode::Esc => {
+//                 disable_raw_mode()?;
+//                 terminal.show_cursor()?;
+//                 return Ok(())
+//             }
+
+//             KeyCode::Char('i') => {
+//                 app.user.user_mode = UserMode::Insert;
+//             }
+
+//             _ => {}
+//         }
+
+//         // ##################################################################
+//         // ##################################################################
+//         UserMode::Insert => match key.code {
+
+//             KeyCode::Enter => {
+//                 app.user.notepad.push(app.user.scratchpad.drain(..).collect());
+//             }
+
+//             KeyCode::Char(c) => {
+//                 app.user.scratchpad.push(c);
+//             }
+
+//             KeyCode::Backspace => {
+//                 app.user.scratchpad.pop();
+//             }
+
+//             KeyCode::Esc => {
+//                 app.user.user_mode = UserMode::Normal;
+//             }
+
+//             _ => {}
+//         }
+
+//         _ => {}
+//     }
+// } 
+
