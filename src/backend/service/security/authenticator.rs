@@ -1,58 +1,49 @@
 use std::{fs::File, io::{BufReader, BufRead}, collections::HashSet};
 
 use bcrypt::{hash_with_salt, verify, DEFAULT_COST};
-use rustrict::{CensorStr, CensorIter};
+use rustrict::CensorStr;
 use regex::Regex;
 use unicode_normalization::UnicodeNormalization;
-use super::database::Database;
 use rand::Rng;
-use uuid::{Uuid, Builder};
+use super::database::{Database, DatabaseManager, AccountManager};
+use super::super::utility::response::Response;
 
-// Traits of an account verifier
-trait Verifier {
+/// Traits of an account verifier
+pub trait Verifier {
     fn read_file(&self, file: &str) -> Vec<String>;
     fn read_file_hashset(&self, file: &str) -> HashSet<String>;
     fn validate_account(&self, username: String, password: String) -> bool;
     fn validate_username(&self, username: String) -> bool;
-    fn validate_password(&self, password: String) -> bool;
+    fn validate_password(&self, password: String) -> Response;
     fn validate_swear_words_regex_pattern_match(&self, text: String) -> bool;
 }
 
-// Traits of an account id
-// trait Uuid {
-//     fn generate_uuid(&self) -> dyn Uuid;
-// }
-
-// Traits of an account username
-trait Username {
+/// Traits of an account username
+pub trait Username {
 
     fn set_username(&mut self, username: String, new_username: String) -> bool;
 }
 
-// Traits of an account password
-trait Password {
+/// Traits of an account password
+pub trait Password {
 
     fn generate_salt(&self) -> [u8; 16];
     fn hash_password(&self, password: String) -> String;
-    fn encrypt_password(&self, password: String) -> String;
     fn compare_password(&self, password: String, hash: String) -> bool;
     fn set_password(&self, password: String, new_password: String) -> bool;
 }
 
 
-// These traits together are what creates our credential
+/// These traits together are what creates our credential
 pub trait Credential: Verifier + Password + Username {
 
     fn new() -> Self;
-    // fn validate_account(&mut self, username: String, password: String) -> bool;
     fn login(&mut self, username: String, password: String) -> bool;
     fn create_account(&mut self, username: String, password: String) -> bool;
-    fn change_account(&mut self, username: String, password: String, new_username: String, new_password: String) -> bool;
-    fn change_username(&mut self, username: String, new_username: String) -> bool;
     fn change_password(&self, password: String, new_password: String) -> bool;
 }
 
-// Build our account struct
+/// Account struct 
 pub struct Account {
     username: String,
     password: String,
@@ -61,12 +52,15 @@ pub struct Account {
 /// A password behviour for an account
 impl Verifier for Account {
 
+    /// Validate the account against the username and password 
     fn validate_account(&self, username: String, password: String) -> bool {
         // TODO: Pull record from database, and compare password
         // proper validation should be done here
-        true
+        
+        self.validate_username(username) && self.validate_password(password).validity
     }
 
+    /// Validate the username being passed through
     fn validate_username(&self, username: String) -> bool {
 
         // Implement regex filter from requirements
@@ -85,10 +79,11 @@ impl Verifier for Account {
             // Speed of o(n) - better choice integration with std library
             return normalization.is_inappropriate()
         }
-        false
+        true
     }
 
-    fn validate_password(&self, password: String) -> bool {
+    /// Validate the password being passed through before being stored
+    fn validate_password(&self, password: String) -> Response {
         // TODO: Pull password from database, and compare with hash
         // proper validation should be done here
         
@@ -119,8 +114,29 @@ impl Verifier for Account {
         let breached_passwords = self.read_file_hashset("breachedpasswords.txt");
 
         // if 1st rule is met, check for second rule and return true if both are met
-        if check_password_length && !weak_passwords.contains(&password) && !breached_passwords.contains(&password) {
-            return true
+        if check_password_length {
+            if breached_passwords.contains(&password) || weak_passwords.contains(&password) {
+
+                // Password found in blacklist
+                return Response {
+                    validity: true,
+                    message: "Passord is compromised and is available online, use another.".to_string(),
+                }
+            } else {
+
+                // Password not found in blacklist and meets length requirements
+                return Response {
+                    validity: false,
+                    message: "Password is secure".to_string(),
+                }
+            }
+        } else {
+
+            // Password does not meet length requirements
+            return Response {
+                validity: false,
+                message: "Pasword must be at least 8 characters long".to_string(),
+            }
         }
 
         // 3 - Make special characters optional - Do nothing here
@@ -128,10 +144,9 @@ impl Verifier for Account {
         //   UI layer
         // 5 - Do not provide password hints - Do nothing here
         // 6 - Implement rate limiting checks
-
-        false
     }
 
+    /// Read a file and return a vector of strings
     fn read_file(&self, file_name: &str) -> Vec<String> {
 
         let mut list = Vec::new();
@@ -143,6 +158,7 @@ impl Verifier for Account {
         list
     }
 
+    /// Read a file and return a hashset of strings
     fn read_file_hashset(&self, file_name: &str) -> HashSet<String> {
 
         let file = File::open(file_name).unwrap();
@@ -152,6 +168,7 @@ impl Verifier for Account {
         return list
     }
 
+    /// Validate the usernames against a list of swear words using regex
     fn validate_swear_words_regex_pattern_match(&self, text: String) -> bool {
         let filter_patterns = self.read_file("regex.txt");
         for pattern in filter_patterns {
@@ -170,6 +187,7 @@ impl Verifier for Account {
 /// - This is where the password is compared
 impl Password for Account {
 
+    /// Generate the salt for our password hashing function
     fn generate_salt(&self) -> [u8; 16] {
 
         // Generate random salt, to be stored in database column
@@ -178,6 +196,7 @@ impl Password for Account {
         salt
     }
 
+    /// Hash function for our password
     fn hash_password(&self, password: String) -> String {
 
         const PEPPER: &str = "PkCt&farjdWL2&WTaoddA2u7S4hfxDkbtNFxxU92";
@@ -198,22 +217,20 @@ impl Password for Account {
         hash.to_string()
     }
 
-    fn encrypt_password(&self, password: String) -> String {
-        String::new()
-    }
-
+    /// compare the password with the hash to verify if they match
     fn compare_password(&self, password: String, hash: String) -> bool {
         verify(password, &hash).unwrap()
     }
 
+    /// Set | Change an existing password 
     fn set_password(&self, password: String, new_password: String) -> bool {
-        // check and confirm hash matches with pass
-        let check = self.validate_password(password.clone());
+
         let hash = self.hash_password(password);
         let verify_pass = self.compare_password(new_password, hash);
 
         // if true, update password
         if verify_pass {
+
             // TODO: connect database to update record
             true
         } else {
@@ -222,8 +239,10 @@ impl Password for Account {
     }
 }
 
-// Implement the username behavior of our credential
+/// Implement the username behavior of our credential
 impl Username for Account {
+
+    /// Set the username of an existing account
     fn set_username(&mut self, username: String, new_username: String) -> bool {
         // TODO: connect database to update record
         // - get salt from database 
@@ -232,8 +251,15 @@ impl Username for Account {
     }
 }
 
+/// Connect Database 
+struct Db {
+    database: Database,
+}
+
+/// Implement the credential behavior of our account
 impl Credential for Account {
 
+    /// Create a new account
     fn new() -> Self {
         Account {
             username: String::new(),
@@ -241,6 +267,7 @@ impl Credential for Account {
         }
     }
 
+    /// Login to an existing account
     fn login(&mut self, username: String, password: String) -> bool {
         // self.validate_account(username, password);
         self.username = username;
@@ -248,24 +275,60 @@ impl Credential for Account {
         true
     }
 
+    /// This is where it all starts, you sign up by creating an account
+    /// through this method. Before we actually create the account, what we'll
+    /// have to do is validate the username and the password.
+    /// - Validate the Username
+    /// - Validate the Password
+    /// - Create the account
     fn create_account(&mut self, username: String, password: String) -> bool {
-        // self.id.
-        self.username = username;
-        self.password = self.hash_password(password);
-        true
+
+        // if self.validate_account(username.to_owned(), password.to_owned()) {
+
+        //     // create account using database query here
+        //     // or create account using the offline-status-store such 
+        //     // as keyring / TODO: Figure which one
+        //     let mut db = Db {
+        //         database: Database::new()
+        //     };
+
+        //     // - Generate salt,
+        //     let salt: [u8; 16] = self.generate_salt();
+        //     // - Generate password hash 
+        //     let password_hash: String = self.hash_password(password);
+        //     // - Store salt and password hash in Database
+        //     let result = db.database.create_account(username.as_str(), password_hash.as_str(), salt).unwrap();
+
+        //     return result
+        // } else {
+        //     false
+        // }
+
+        // let account_validity = self.validate_account(username.to_owned(), password.to_owned());
+        match self.validate_account(username.to_owned(), password.to_owned()) {
+            true => {
+                // create account using database query here
+                // or create account using the offline-status-store such 
+                // as keyring / TODO: Figure which one
+                let mut db = Db {
+                    database: Database::new()
+                };
+
+                // - Generate salt,
+                let salt: [u8; 16] = self.generate_salt();
+                // - Generate password hash 
+                let password_hash: String = self.hash_password(password);
+                // - Store salt and password hash in Database
+                let result = db.database.create_account(username.as_str(), password_hash.as_str(), salt).unwrap();
+
+                return result
+            },
+            false => false
+        }
+
     }
 
-    fn change_account(&mut self, username: String, password: String, new_username: String, new_password: String) -> bool {
-        self.set_username(username, new_username);
-        self.set_password(password, new_password);
-        true
-    }
-
-    fn change_username(&mut self, username: String, new_username: String) -> bool {
-        self.set_username(username, new_username);
-        true
-    }
-
+    /// Change the password of an existing account
     fn change_password(&self, password: String, new_password: String) -> bool {
         self.set_password(password, new_password);
         true
