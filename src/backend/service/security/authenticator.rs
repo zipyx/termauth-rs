@@ -13,7 +13,7 @@ pub trait Verifier {
     fn read_file(&self, file: &str) -> Vec<String>;
     fn read_file_hashset(&self, file: &str) -> HashSet<String>;
     fn validate_account(&self, username: String, password: String) -> bool;
-    fn validate_username(&self, username: String) -> bool;
+    fn validate_username(&self, username: String) -> Response;
     fn validate_password(&self, password: String) -> Response;
     fn validate_swear_words_regex_pattern_match(&self, text: String) -> bool;
 }
@@ -57,11 +57,11 @@ impl Verifier for Account {
         // TODO: Pull record from database, and compare password
         // proper validation should be done here
         
-        self.validate_username(username) && self.validate_password(password).validity
+        self.validate_username(username).validity && self.validate_password(password).validity
     }
 
     /// Validate the username being passed through
-    fn validate_username(&self, username: String) -> bool {
+    fn validate_username(&self, username: String) -> Response {
 
         // Implement regex filter from requirements
         let regex_pattern = r"^[a-zA-Z0-9_]+$";
@@ -77,9 +77,38 @@ impl Verifier for Account {
             // return self.validate_swear_words_regex_pattern_match(normalization)
 
             // Speed of o(n) - better choice integration with std library
-            return normalization.is_inappropriate()
+            // return normalization.is_inappropriate()
+            // if normalization.is_inappropriate() {
+            //     return Response {
+            //         validity: false,
+            //         message: "Username contains inappropriate language".to_string(),
+            //     }
+            // } else {
+            //     return Response {
+            //         validity: true,
+            //         message: "Username is valid".to_string(),
+            //     }
+            // }
+
+            match normalization.is_inappropriate() {
+                true => {
+                    return Response {
+                        validity: false,
+                        message: "Inappropriate username, not allowed".to_string(),
+                    }
+                },
+                false => {
+                    return Response {
+                        validity: true,
+                        message: "Username is valid".to_string(),
+                    }
+                },
+            }
         }
-        true
+        Response {
+            validity: false,
+            message: "Invalid username, characters not usable".to_string(),
+        }
     }
 
     /// Validate the password being passed through before being stored
@@ -120,7 +149,7 @@ impl Verifier for Account {
                 // Password found in blacklist
                 return Response {
                     validity: true,
-                    message: "Passord is compromised and is available online, use another.".to_string(),
+                    message: "Passord compromised and available online".to_string(),
                 }
             } else {
 
@@ -135,7 +164,7 @@ impl Verifier for Account {
             // Password does not meet length requirements
             return Response {
                 validity: false,
-                message: "Pasword must be at least 8 characters long".to_string(),
+                message: "Pasword must be at least 8 characters".to_string(),
             }
         }
 

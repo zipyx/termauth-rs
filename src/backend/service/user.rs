@@ -82,7 +82,6 @@ pub struct User<'a> {
     app_search_query: String,
     pub app_secure_password: String,
     pub app_username: String,
-    pub error_message: String,
     pub login: Login,
     pub login_password: String,
     pub login_secure_password: String,
@@ -91,10 +90,13 @@ pub struct User<'a> {
     pub scratchpad: String,
     pub secure_password: String,
     signed_in: bool,
-    signup_password: String,
-    signup_secure_password: String,
     pub signup: SignUp,
     signup_username: String,
+    signup_password: String,
+    signup_secure_password: String,
+    signup_account_error_message: String,
+    signup_username_error_message: String,
+    signup_password_error_message: String,
     pub tab: TabsState<'a>,
     pub user_mode: UserMode,
 
@@ -144,7 +146,6 @@ impl <'a>User<'a> {
             app_secure_password: String::new(),
             app_password: String::new(),
             app_username: String::new(),
-            error_message: String::new(),
             auth: Auth::Account(Account::new()),
             login: Login::Username,
             login_password: String::new(),
@@ -154,10 +155,13 @@ impl <'a>User<'a> {
             scratchpad: String::new(),
             secure_password: String::new(),
             signed_in: false,
-            signup_password: String::new(),
-            signup_secure_password: String::new(),
             signup: SignUp::Username,
             signup_username: String::new(),
+            signup_password: String::new(),
+            signup_secure_password: String::new(),
+            signup_account_error_message: String::new(),
+            signup_username_error_message: String::new(),
+            signup_password_error_message: String::new(),
             tab: TabsState::new(VISITOR.to_vec()),
             user_mode: UserMode::Normal,
         }
@@ -233,6 +237,21 @@ impl <'a>User<'a> {
         self.signup_username.clear();
     }
 
+    /// User Service - Get signup username error message
+    pub fn get_signup_username_error_message(&mut self) -> String {
+        self.signup_username_error_message.clone()
+    }
+
+    /// User Service - Set signup username error message
+    pub fn set_signup_username_error_message(&mut self, message: String) {
+        self.signup_username_error_message = message;
+    }
+
+    /// User Service - Clear signup username error message
+    pub fn clear_signup_username_error_message(&mut self) {
+        self.signup_username_error_message.clear();
+    }
+
     /// User Service - Get password to a temp signup object
     /// - password : password
     pub fn get_signup_password(&mut self) -> String {
@@ -253,6 +272,21 @@ impl <'a>User<'a> {
     /// User Service - Clear signup password
     pub fn clear_signup_password(&mut self) {
         self.signup_password.clear();
+    }
+
+    /// User Service - Get signup password error message
+    pub fn get_signup_password_error_message(&mut self) -> String {
+        self.signup_password_error_message.clone()
+    }
+
+    /// User Service - Set signup password error message
+    pub fn set_signup_password_error_message(&mut self, message: String) {
+        self.signup_password_error_message = message;
+    }
+
+    /// User Service - Clear signup password error message
+    pub fn clear_signup_password_error_message(&mut self) {
+        self.signup_password_error_message.clear();
     }
 
     /// User Service - Get secure password to an account using provided credentials
@@ -294,15 +328,29 @@ impl <'a>User<'a> {
     /// - username : username 
     /// - password : password
      pub fn create_account(&mut self, username: String, password: String) -> bool {
+
         let password_response = self.account.validate_password(password.clone());
         let username_response = self.account.validate_username(username.clone());
+
+        match username_response.validity {
+            true => {}
+            _ => {
+                self.clear_signup_username();
+                self.set_signup_username_error_message(
+                    username_response.message
+                );
+                return false;
+            }
+        }
 
         match password_response.validity {
             true => {}
             _ => {
                 self.clear_signup_password();
                 self.clear_signup_secure_password();
-                self.error_message = password_response.message;
+                self.set_signup_password_error_message(
+                    password_response.message
+                );
                 return false;
             }
         }
@@ -316,7 +364,7 @@ impl <'a>User<'a> {
                 true
             },
             _ => {
-                self.error_message = "Password is less than 8 characters".to_string();
+                self.signup_account_error_message = "Failed to create account".to_string();
                 false
             }
         }

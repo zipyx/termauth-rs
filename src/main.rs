@@ -439,20 +439,21 @@ fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Durat
                                 match app.user.signup {
 
                                     SignUp::Username => {
+                                        if app.user.get_signup_username_error_message().len() > 0 {
+                                            app.user.clear_signup_username_error_message();
+                                        }
                                         app.user.user_mode = UserMode::Username;
                                         app.user.signup = SignUp::Username;
                                     }
 
                                     SignUp::Password => {
+                                        if app.user.get_signup_password_error_message().len() > 0 {
+                                            app.user.clear_signup_password_error_message();
+                                        }
                                         app.user.user_mode = UserMode::Password;
                                         app.user.signup = SignUp::Password;
                                     }
                                 }
-                            }
-
-                            KeyCode::Char('p') => {
-                                app.user.user_mode = UserMode::Password;
-                                app.user.signup = SignUp::Password;
                             }
 
                             _ => {}
