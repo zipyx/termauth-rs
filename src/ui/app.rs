@@ -38,7 +38,7 @@ pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     // Render tabs with respective UI
     f.render_widget(tabs, chunks[0]);
 
-    if app.user.signed_in {
+    if app.user.get_signed_in() {
         match app.user.tab.index {
             0 => welcome::draw_welcome(f, app, chunks[1]),
             1 => notepad::draw_notepad(f, app, chunks[1]),

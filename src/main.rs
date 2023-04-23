@@ -122,86 +122,9 @@ fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Durat
                 // ##################################################################
                 // ##################################################################
                 // ##################################################################
-                // // Welcome
-                // if app.user.tab.index == 0 {
-
-                //     match app.user.user_mode {
-
-                //         // ##################################################################
-                //         // ##################################################################
-                //         UserMode::Normal => match key.code {
-                //             KeyCode::Char('h') => app.on_left(),
-                //             KeyCode::Char('l') => app.on_right(),
-                //             KeyCode::Char('q') | KeyCode::Esc => {
-                //                 disable_raw_mode()?;
-                //                 terminal.show_cursor()?;
-                //                 return Ok(())
-                //             }
-
-                //             _ => {}
-                //         }
-
-                //         _ => {}
-                //     } // match parent
-
-                // } 
-                // if app.user.tab.index == 1 && app.user.signed_in {
-
-                //     match app.user.user_mode {
-
-                //         // ##################################################################
-                //         // ##################################################################
-                //         UserMode::Normal => match key.code {
-                //             KeyCode::Char('h') => app.on_left(),
-                //             KeyCode::Char('l') => app.on_right(),
-                //             KeyCode::Char('q') | KeyCode::Esc => {
-                //                 disable_raw_mode()?;
-                //                 terminal.show_cursor()?;
-                //                 return Ok(())
-                //             }
-
-                //             KeyCode::Char('i') => {
-                //                 app.user.user_mode = UserMode::Insert;
-                //             }
-
-                //             _ => {}
-                //         }
-
-                //         // ##################################################################
-                //         // ##################################################################
-                //         UserMode::Insert => match key.code {
-
-                //             KeyCode::Enter => {
-                //                 app.user.notepad.push(app.user.scratchpad.drain(..).collect());
-                //             }
-
-                //             KeyCode::Char(c) => {
-                //                 app.user.scratchpad.push(c);
-                //             }
-
-                //             KeyCode::Backspace => {
-                //                 app.user.scratchpad.pop();
-                //             }
-
-                //             KeyCode::Esc => {
-                //                 app.user.user_mode = UserMode::Normal;
-                //             }
-
-                //             _ => {}
-                //         }
-
-                //         _ => {}
-                //     }
-                // } 
-
-                // ##################################################################
-                // ##################################################################
-                // ##################################################################
-                // ##################################################################
-                // ##################################################################
 
                 // Notepad
-                if app.user.tab.index == 1 && app.user.signed_in {
+                if app.user.tab.index == 1 && app.user.get_signed_in() {
 
                     match app.user.user_mode {
 
@@ -258,7 +181,7 @@ fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Durat
                 // ##################################################################
 
                 // Credential Manager
-                else if app.user.tab.index == 2 && app.user.signed_in {
+                else if app.user.tab.index == 2 && app.user.get_signed_in() {
 
                     match app.user.user_mode {
 
@@ -475,14 +398,24 @@ fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Durat
                         UserMode::Normal => match key.code {
 
                             KeyCode::Char('w') => {
-                                app.user.create_account(
-                                    app.user.signup_username.to_owned(), 
-                                    app.user.signup_secure_password.to_owned()
-                                );
-                                app.user.signup_username.clear();
-                                app.user.signup_password.clear();
-                                app.user.signup_secure_password.clear();
-                                app.user.signed_in = true;
+                                let username = app.user.get_signup_username();
+                                let password = app.user.get_signup_password();
+                                match app.user.create_account( 
+                                    username,
+                                    password
+                                ) {
+                                        true => {
+                                            app.user.clear_signup_username();
+                                            app.user.clear_signup_secure_password();
+                                        }
+                                        _ => {}
+                                    };
+
+                                // app.user.signup_username.clear();
+                                // app.user.signup_password.clear();
+                                // app.user.signup_secure_password.clear();
+                                // app.user.signed_in = true;
+
                             }
 
                             KeyCode::Char('j') => {
@@ -537,11 +470,11 @@ fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Durat
                             }
 
                             KeyCode::Char(c) => {
-                                app.user.signup_username.push(c);
+                                app.user.set_signup_username(c);
                             }
 
                             KeyCode::Backspace => {
-                                app.user.signup_username.pop();
+                                app.user.pop_signup_username();
                             }
 
                             KeyCode::Esc => {
@@ -563,13 +496,13 @@ fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Durat
 
                             KeyCode::Char(c) => {
                                 let ast: char = '*';
-                                app.user.signup_password.push(ast);
-                                app.user.signup_secure_password.push(c);
+                                app.user.set_signup_password(ast);
+                                app.user.set_signup_secure_password(c);
                             }
 
                             KeyCode::Backspace => {
-                                app.user.signup_password.pop();
-                                app.user.signup_secure_password.pop();
+                                app.user.pop_signup_password();
+                                app.user.pop_signup_secure_password();
                             }
 
                             KeyCode::Esc => {
@@ -607,7 +540,7 @@ fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Durat
                                 app.user.login_username.clear();
                                 app.user.login_password.clear();
                                 app.user.login_secure_password.clear();
-                                app.user.signed_in = true;
+                                app.user.set_signed_in(true);
                             }
 
                             KeyCode::Char('j') => {
