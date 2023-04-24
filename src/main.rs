@@ -66,39 +66,14 @@ impl <'a>App<'a> {
         self.user.tab.previous();
     }
 
-    // fn panic(&mut self) {
-    //     let hook = std::panic::take_hook();
+    fn panic_hook(&mut self) {
+        let hook = std::panic::take_hook();
 
-    //     std::panic::set_hook(Box::new(move |panic| {
-    //         self.reset_terminal();
-    //     }))
-    // }
-
-    // fn init_terminal(&mut self) -> Result<Terminal<CrosstermBackend<io::Stdout>>> {
-    //     crossterm::execute!(io::stdout(), EnterAlternateScreen)?;
-    //     enable_raw_mode()?;
-
-    //     let backend = CrosstermBackend::new(io::stdout());
-
-    //     let mut terminal = Terminal::new(backend)?;
-    //     terminal.hide_cursor()?;
-
-    //     Ok(terminal)
-    // }
-
-    // fn reset_terminal(&mut self) -> Result<()> {
-    //     disable_raw_mode()?;
-    //     crossterm::execute!(io::stdout(), LeaveAlternateScreen)?;
-    //     Ok(())
-    // }
+        std::panic::set_hook(Box::new(move |panic| {
+            disable_raw_mode().unwrap();
+        }))
+    }
 }
-
-// fn reset_terminal() -> Result<()> {
-//     disable_raw_mode()?;
-//     crossterm::execute!(io::stdout(), LeaveAlternateScreen)?;
-
-//     Ok(())
-// }
 
 fn main() -> Result<(), Box<dyn Error>> {
 
@@ -116,6 +91,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Create app 
     let app = App::new();
     let res = ui_app(&mut terminal, app, tick_rate);
+
+    // Restore terminal on panic
+    // let hook = std::panic::take_hook();
+
+    // std::panic::set_hook(Box::new(move |panic| {
+    //     disable_raw_mode().unwrap();
+    //     hook(panic);
+    // }));
 
     // Restore terminal on exit
     disable_raw_mode()?;

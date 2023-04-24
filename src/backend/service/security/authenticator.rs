@@ -232,19 +232,11 @@ impl Password for Account {
         // Get newly generated password
         let generated_password = self.generate_password(password);
         // Convert extended password to bytes and begin hashing with salt
-        let hash = hash_with_salt(generated_password, DEFAULT_COST, self.generate_salt()).unwrap();
+        let hash = hash_with_salt(generated_password.clone(), DEFAULT_COST, self.generate_salt()).unwrap();
 
         // Confirm hash
-        // match self.compare_password(password, hash)
-        // let salt = generate_salt();
-        // let generated_password = generate_password(password.clone());
-
-        // // Convert extended password to bytes and begin hashing with salt
-        // let hash = hash_with_salt(generated_password.clone(), DEFAULT_COST, salt).unwrap();
-
-        // // Confirm hash
-        // let result = compare_password(generated_password, hash.to_string());
-        // println!("Hash result: {}", result);
+        let result = self.compare_password(generated_password, hash.to_string());
+        println!("\nHash result one : {}", result);
 
         // hash.to_string().clone()
 
@@ -305,18 +297,21 @@ impl Credential for Account {
         // self.set_username(username.to_owned());
         // self.set_password(password.to_owned());
 
+        // Get password
+        let generated_password = self.generate_password(password.clone());
+
         // Get the hash from the database
         let result = db.database.get_account(username.clone().as_str().clone()).unwrap();
         let db_password_hash = result.password;
         let db_username = result.username;
         let db_logged_in = result.logged_in;
 
-        let verified = verify(password.clone(), &db_password_hash);
+        let verified = verify(generated_password, &db_password_hash);
 
         match verified {
             Ok(true) => {
 
-                println!("Password verified");
+                // println!("Password verified");
                 return Response {
                     validity: true,
                     message: "Success".to_string(),
@@ -324,7 +319,7 @@ impl Credential for Account {
             },
             Ok(false) => {
 
-                println!("Invalid credentials, try again");
+                // println!("Invalid credentials, try again");
                 return Response {
                     validity: false,
                     message: "Invalid credentials, try again".to_string(),
@@ -364,8 +359,15 @@ impl Credential for Account {
 
                 // - Generate salt,
                 let salt: [u8; 16] = self.generate_salt();
+
+                let generated_password = self.generate_password(password.clone());
+
                 // - Generate password hash 
-                let password_hash: String = self.hash_password(password);
+                let password_hash: String = self.hash_password(password.clone());
+                // Confirm hash
+                let result = self.compare_password(generated_password, password_hash.clone());
+                println!("\nHash result two : {}", result);
+
                 // - Store salt and password hash in Database
                 let result = db.database.create_account(username.as_str(), password_hash.as_str(), salt).unwrap();
 

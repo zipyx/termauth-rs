@@ -119,7 +119,7 @@ fn draw_login_block<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     f.render_widget(help_message, user_mode_pos);
 
     // Error blinkers
-    let error_response = app.user.get_signup_username_error_message();
+    let error_response = app.user.get_login_error_message();
     let (error_message, error_message_style) = match app.user.user_mode {
         UserMode::Normal => (
             vec![
@@ -149,5 +149,7 @@ fn draw_login_block<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     user_error.patch_style(error_message_style);
 
     let user_error_help_message = Paragraph::new(user_error).alignment(Alignment::Center);
-
+    if app.user.get_login_error_message().len() > 0 {
+        f.render_widget(user_error_help_message, error_message_pos);
+    }
 }

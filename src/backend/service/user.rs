@@ -269,6 +269,11 @@ impl <'a>User<'a> {
         self.login_secure_password.pop();
     }
 
+    /// User Service - Get login error message
+    pub fn get_login_error_message(&self) -> String {
+        self.login_error_message.clone()
+    }
+
     /// User Service - Set login message
     /// - message : message
     pub fn set_login_error_message(&mut self, message: String) {

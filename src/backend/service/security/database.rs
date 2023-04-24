@@ -53,7 +53,7 @@ impl DatabaseManager for Database {
                 id              CHAR(36)                PRIMARY KEY,
                 username        VARCHAR(40)             NOT NULL UNIQUE,
                 password        VARCHAR(150)            NOT NULL,
-                salt            BINARY(150)            NOT NULL,
+                salt            BINARY(150)             NOT NULL,
                 logged_in       BOOLEAN                 NOT NULL DEFAULT 0,
                 signed_in       BOOLEAN                 NOT NULL DEFAULT 0,
                 created_at      DATETIME                NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -65,7 +65,7 @@ impl DatabaseManager for Database {
                 id              INTEGER PRIMARY KEY AUTOINCREMENT,
                 account         CHAR(36) NOT NULL,
                 username        VARCHAR(36) NOT NULL,
-                password        VARHCAR(150) NOT NULL,
+                password        BINARY(150) NOT NULL,
                 salt            VARCHAR(150) NOT NULL,
                 FOREIGN KEY (account) REFERENCES account(id)
             )";
@@ -171,7 +171,9 @@ impl AccountManager for Database {
             &[&id, username, &password, salt_string.as_str()],
             ) 
             {
-                Ok(_) => Ok(true),
+                Ok(_) => {
+                    Ok(true)
+                },
                 Err(_) => Ok(false),
             }
     }
