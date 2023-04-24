@@ -28,6 +28,7 @@ pub trait Username {
 pub trait Password {
 
     fn generate_salt(&self) -> [u8; 16];
+    fn generate_password(&self, password: String) -> String;
     fn hash_password(&self, password: String) -> String;
     fn compare_password(&self, password: String, hash: String) -> bool;
     fn set_password(&mut self, password: String);
@@ -66,7 +67,8 @@ impl Verifier for Account {
         // Implement regex filter from requirements
         let regex_pattern = r"^[a-zA-Z0-9_]+$";
         // Normalize the username being passed
-        let normalization = username.nfkd().nfkc().nfd().filter(|c| c.is_alphanumeric()).collect::<String>();
+        // let normalization = username.to_ascii_lowercase().nfkd().nfkc().nfd().filter(|c| c.is_alphanumeric()).collect::<String>();
+        let normalization = username.to_ascii_lowercase().nfkd().nfkc().nfd().to_string();
         let re = Regex::new(regex_pattern).unwrap();
 
         // if first rule of regex filter doesn't work return false immediately as 
@@ -141,7 +143,7 @@ impl Verifier for Account {
                 // Password not found in blacklist and meets length requirements
                 return Response {
                     validity: false,
-                    message: "Password is weak, use another.".to_string(),
+                    message: "Password is weak, use another".to_string(),
                 }
             } else {
 
@@ -155,7 +157,7 @@ impl Verifier for Account {
             // Password does not meet length requirements
             return Response {
                 validity: false,
-                message: "Pasword must be at least 8 characters".to_string(),
+                message: "Password length is not acceptable".to_string(),
             }
         }
 
@@ -213,24 +215,39 @@ impl Password for Account {
         salt
     }
 
+    fn generate_password(&self, password: String) -> String {
+
+        // No longer needed
+        const PEPPER: &str = "PkCt&farjdWL2&WTaoddA2u7S4hfxDkbtNFxxU92";
+
+        // let x = password.extend(PEPPER.as_bytes().iter().map(|x| x.to_string()));
+        // Clone the password into bytes to be concatenated with the pepper
+        let extended_password: String = password + PEPPER;
+        extended_password
+    }
+
     /// Hash function for our password
     fn hash_password(&self, password: String) -> String {
 
-        const PEPPER: &str = "PkCt&farjdWL2&WTaoddA2u7S4hfxDkbtNFxxU92";
-
-        // Clone the password into bytes to be concatenated with the pepper
-        let mut extended_password: String = password
-            .clone()
-            .as_bytes()
-            .iter()
-            .map(|x| x.to_string())
-            .collect();
-
-        // Connect the password with the pepper 
-        extended_password.extend(PEPPER.as_bytes().iter().map(|x| x.to_string()));
-
+        // Get newly generated password
+        let generated_password = self.generate_password(password);
         // Convert extended password to bytes and begin hashing with salt
-        let hash = hash_with_salt(extended_password.as_bytes(), DEFAULT_COST, self.generate_salt()).unwrap();
+        let hash = hash_with_salt(generated_password, DEFAULT_COST, self.generate_salt()).unwrap();
+
+        // Confirm hash
+        // match self.compare_password(password, hash)
+        // let salt = generate_salt();
+        // let generated_password = generate_password(password.clone());
+
+        // // Convert extended password to bytes and begin hashing with salt
+        // let hash = hash_with_salt(generated_password.clone(), DEFAULT_COST, salt).unwrap();
+
+        // // Confirm hash
+        // let result = compare_password(generated_password, hash.to_string());
+        // println!("Hash result: {}", result);
+
+        // hash.to_string().clone()
+
         hash.to_string()
     }
 
@@ -297,11 +314,20 @@ impl Credential for Account {
         let verified = verify(password.clone(), &db_password_hash);
 
         match verified {
-            Ok(_) => {
+            Ok(true) => {
+
                 println!("Password verified");
                 return Response {
                     validity: true,
                     message: "Success".to_string(),
+                }
+            },
+            Ok(false) => {
+
+                println!("Invalid credentials, try again");
+                return Response {
+                    validity: false,
+                    message: "Invalid credentials, try again".to_string(),
                 }
             },
             Err(_) => {
@@ -333,8 +359,8 @@ impl Credential for Account {
                     database: Database::new()
                 };
 
-                // Test login
-                self.login(username.clone(), password.clone());
+                // let result = db.database.get_account(username.clone().as_str().clone()).unwrap();
+                // let db_username = result.username;
 
                 // - Generate salt,
                 let salt: [u8; 16] = self.generate_salt();

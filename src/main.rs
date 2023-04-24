@@ -21,6 +21,7 @@ pub struct App<'a> {
     user: User<'a>,
     scroll: u16,
     info: StateList<&'a str>,
+    state: bool,
 }
 
 impl <'a>App<'a> {
@@ -31,6 +32,7 @@ impl <'a>App<'a> {
             user: User::new(),
             scroll: 2,
             info: StateList::all_items(SYSTEM.to_vec()),
+            state: true,
         }
     }
 
@@ -63,8 +65,40 @@ impl <'a>App<'a> {
     fn on_left(&mut self) {
         self.user.tab.previous();
     }
+
+    // fn panic(&mut self) {
+    //     let hook = std::panic::take_hook();
+
+    //     std::panic::set_hook(Box::new(move |panic| {
+    //         self.reset_terminal();
+    //     }))
+    // }
+
+    // fn init_terminal(&mut self) -> Result<Terminal<CrosstermBackend<io::Stdout>>> {
+    //     crossterm::execute!(io::stdout(), EnterAlternateScreen)?;
+    //     enable_raw_mode()?;
+
+    //     let backend = CrosstermBackend::new(io::stdout());
+
+    //     let mut terminal = Terminal::new(backend)?;
+    //     terminal.hide_cursor()?;
+
+    //     Ok(terminal)
+    // }
+
+    // fn reset_terminal(&mut self) -> Result<()> {
+    //     disable_raw_mode()?;
+    //     crossterm::execute!(io::stdout(), LeaveAlternateScreen)?;
+    //     Ok(())
+    // }
 }
 
+// fn reset_terminal() -> Result<()> {
+//     disable_raw_mode()?;
+//     crossterm::execute!(io::stdout(), LeaveAlternateScreen)?;
+
+//     Ok(())
+// }
 
 fn main() -> Result<(), Box<dyn Error>> {
 
@@ -406,15 +440,11 @@ fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Durat
                                 ) {
                                         true => {
                                             app.user.clear_signup_username();
+                                            app.user.clear_signup_password();
                                             app.user.clear_signup_secure_password();
                                         }
                                         _ => {}
                                     };
-
-                                // app.user.signup_username.clear();
-                                // app.user.signup_password.clear();
-                                // app.user.signup_secure_password.clear();
-                                // app.user.signed_in = true;
 
                             }
 
@@ -534,22 +564,33 @@ fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Durat
                         UserMode::Normal => match key.code {
 
                             KeyCode::Char('w') => {
-                                app.user.login(
-                                    app.user.login_username.to_owned(), 
-                                    app.user.login_secure_password.to_owned()
-                                );
-                                app.user.login_username.clear();
-                                app.user.login_password.clear();
-                                app.user.login_secure_password.clear();
-                                app.user.set_signed_in(true);
+
+                                let username = app.user.get_login_username();
+                                let password = app.user.get_login_secure_password();
+
+                                match app.user.login( 
+                                    username,
+                                    password
+                                ) {
+                                        true => {
+                                            app.user.clear_login_username();
+                                            app.user.clear_login_password();
+                                            app.user.clear_login_secure_password();
+                                            app.user.set_signed_in(true);
+                                        }
+                                        _ => {}
+                                    };
+
                             }
 
                             KeyCode::Char('j') => {
-                                app.user.login = Login::Password;
+                                app.user.set_login_mode(Login::Password);
+                                // app.user.login = Login::Password;
                             }
 
                             KeyCode::Char('k') => {
-                                app.user.login = Login::Username;
+                                app.user.set_login_mode(Login::Username);
+                                // app.user.login = Login::Username;
                             }
 
                             KeyCode::Char('h') => app.on_left(),
@@ -562,23 +603,22 @@ fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Durat
 
                             KeyCode::Char('i') => {
 
-                                match app.user.login {
+                                match app.user.get_login_mode() {
 
                                     Login::Username => {
+                                        app.user.clear_login_error_message();
                                         app.user.user_mode = UserMode::Username;
-                                        app.user.login = Login::Username;
+                                        app.user.set_login_mode(Login::Username);
+                                        // app.user.login = Login::Username;
                                     }
 
                                     Login::Password => {
+                                        app.user.clear_login_error_message();
                                         app.user.user_mode = UserMode::Password;
-                                        app.user.login = Login::Password;
+                                        app.user.set_login_mode(Login::Password);
+                                        // app.user.login = Login::Password;
                                     }
                                 }
-                            }
-
-                            KeyCode::Char('p') => {
-                                app.user.user_mode = UserMode::Password;
-                                app.user.login = Login::Password;
                             }
 
                             _ => {}
@@ -591,17 +631,17 @@ fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Durat
                         UserMode::Username => match key.code {
 
                             KeyCode::Enter => {
-                                app.user.set_login_username(app.user.login_username.to_owned());
                                 app.user.user_mode = UserMode::Password;
-                                app.user.login = Login::Password;
+                                app.user.set_login_mode(Login::Password);
+                                // app.user.login = Login::Password;
                             }
 
                             KeyCode::Char(c) => {
-                                app.user.login_username.push(c);
+                                app.user.set_login_username(c);
                             }
 
                             KeyCode::Backspace => {
-                                app.user.login_username.pop();
+                                app.user.pop_login_username();
                             }
 
                             KeyCode::Esc => {
@@ -618,19 +658,18 @@ fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Durat
                         UserMode::Password => match key.code {
 
                             KeyCode::Enter => {
-                                app.user.set_login_password(app.user.login_secure_password.to_owned());
                                 app.user.user_mode = UserMode::Normal;
                             }
 
                             KeyCode::Char(c) => {
                                 let ast: char = '*';
-                                app.user.login_password.push(ast);
-                                app.user.login_secure_password.push(c);
+                                app.user.set_login_password(ast);
+                                app.user.set_login_secure_password(c);
                             }
 
                             KeyCode::Backspace => {
-                                app.user.login_password.pop();
-                                app.user.login_secure_password.pop();
+                                app.user.pop_login_password();
+                                app.user.pop_login_secure_password();
                             }
 
                             KeyCode::Esc => {

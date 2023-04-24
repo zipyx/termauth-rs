@@ -26,6 +26,7 @@ pub enum SignUp {
 /// Enum login containing the following fields for mode behavior
 /// - Username : required for username input
 /// - Password : required for password input
+#[derive(Debug, Clone)]
 pub enum Login {
     Username,
     Password,
@@ -45,6 +46,10 @@ pub enum CredentialManager {
 /// - Account : account object
 enum Auth {
     Account(Account),
+}
+
+impl Login {
+
 }
 
 /// User Servcie 
@@ -82,10 +87,11 @@ pub struct User<'a> {
     app_search_query: String,
     pub app_secure_password: String,
     pub app_username: String,
-    pub login: Login,
-    pub login_password: String,
-    pub login_secure_password: String,
-    pub login_username: String,
+    login: Login,
+    login_username: String,
+    login_password: String,
+    login_secure_password: String,
+    login_error_message: String,
     pub notepad: Vec<String>,
     pub scratchpad: String,
     pub secure_password: String,
@@ -94,7 +100,6 @@ pub struct User<'a> {
     signup_username: String,
     signup_password: String,
     signup_secure_password: String,
-    signup_account_error_message: String,
     signup_username_error_message: String,
     signup_password_error_message: String,
     pub tab: TabsState<'a>,
@@ -148,9 +153,10 @@ impl <'a>User<'a> {
             app_username: String::new(),
             auth: Auth::Account(Account::new()),
             login: Login::Username,
+            login_username: String::new(),
             login_password: String::new(),
             login_secure_password: String::new(),
-            login_username: String::new(),
+            login_error_message: String::new(),
             notepad: Vec::new(),
             scratchpad: String::new(),
             secure_password: String::new(),
@@ -159,12 +165,21 @@ impl <'a>User<'a> {
             signup_username: String::new(),
             signup_password: String::new(),
             signup_secure_password: String::new(),
-            signup_account_error_message: String::new(),
             signup_username_error_message: String::new(),
             signup_password_error_message: String::new(),
             tab: TabsState::new(VISITOR.to_vec()),
             user_mode: UserMode::Normal,
         }
+    }
+
+    /// User Service - Getting the user login mode
+    pub fn get_login_mode(&mut self) -> Login {
+        self.login.clone()
+    }
+
+    /// User Service - Setting the login mode for the user
+    pub fn set_login_mode(&mut self, login_mode: Login) {
+        self.login = login_mode;
     }
 
     /// User Service - Set the app name for password manager 
@@ -191,6 +206,80 @@ impl <'a>User<'a> {
         self.app_secure_password = app_secure_password;
     }
 
+    /// User Service - Get login username at login screen
+    pub fn get_login_username(&self) -> String {
+        self.login_username.clone()
+    }
+
+    /// User Service - Set login username at login screen
+    /// - character : char
+    pub fn set_login_username(&mut self, character: char) {
+        self.login_username.push(character);
+    }
+
+    /// User Service - Remove username character 
+    pub fn pop_login_username(&mut self) {
+        self.login_username.pop();
+    }
+
+    /// User Service - Set password at login screen
+    /// - password : password
+    pub fn set_login_password(&mut self, character: char) {
+        self.login_password.push(character);
+    }
+
+    /// User Service - Get secure login password at login screen
+    pub fn get_login_secure_password(&self) -> String {
+        self.login_secure_password.clone()
+    }
+
+    /// User Service - Clear login username
+    pub fn clear_login_username(&mut self) {
+        self.login_username.clear();
+    }
+
+    /// User Service - Clear login password 
+    pub fn clear_login_password(&mut self) {
+        self.login_password.clear();
+    }
+
+    /// User Service - Clear login secure password 
+    pub fn clear_login_secure_password(&mut self) {
+        self.login_secure_password.clear();
+    }
+
+    /// User Service - Set secure password to an existing account using provided credentials
+    pub fn set_login_secure_password(&mut self, character: char) {
+        self.login_secure_password.push(character);
+    }
+
+    /// User Service - Get login password at login screen
+    pub fn get_login_password(&self) -> String {
+        self.login_password.clone()
+    }
+
+    /// User Service - Remove password character from an exiting account using provided credentials
+    /// - password : password 
+    pub fn pop_login_password(&mut self) {
+        self.login_password.pop();
+    }
+
+    /// User Service - Remove character from secure password
+    pub fn pop_login_secure_password(&mut self) {
+        self.login_secure_password.pop();
+    }
+
+    /// User Service - Set login message
+    /// - message : message
+    pub fn set_login_error_message(&mut self, message: String) {
+        self.login_error_message = message;
+    }
+
+    /// User Service - Clear login error message
+    pub fn clear_login_error_message(&mut self) {
+        self.login_error_message.clear();
+    }
+
     /// User Service - Login to an account using provided credentials
     pub fn login(&mut self, username: String, password: String) -> bool {
         // self.tab = TabsState::new(MEMBER.to_vec());
@@ -203,26 +292,10 @@ impl <'a>User<'a> {
                 true
             },
             false => {
+                self.set_login_error_message(result.message);
                 false
             }
         }
-    }
-
-    /// User Service - Set username to an exiting account using provided credentials
-    /// - username : username
-    pub fn set_login_username(&mut self, username: String) {
-        self.login_username = username;
-    }
-
-    /// User Service - Set password to an exiting account using provided credentials 
-    /// - password : password
-    pub fn set_login_password(&mut self, password: String) {
-        self.login_password = password;
-    }
-
-    /// User Service - Set secure password to an existing account using provided credentials
-    pub fn set_login_secure_password(&mut self, secure_password: String) {
-        self.login_secure_password = secure_password;
     }
 
     /// User Service - Set username to a temp signup object

@@ -53,7 +53,7 @@ impl DatabaseManager for Database {
                 id              CHAR(36)                PRIMARY KEY,
                 username        VARCHAR(40)             NOT NULL UNIQUE,
                 password        VARCHAR(150)            NOT NULL,
-                salt            VARCHAR(150)            NOT NULL,
+                salt            BINARY(150)            NOT NULL,
                 logged_in       BOOLEAN                 NOT NULL DEFAULT 0,
                 signed_in       BOOLEAN                 NOT NULL DEFAULT 0,
                 created_at      DATETIME                NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -144,6 +144,8 @@ impl AccountManager for Database {
 
         // let salt_string = format!("{:?}", salt);
         let salt_string = String::from_utf8_lossy(&salt).to_string();
+
+        // let salt_string = salt
 
         // Generate random UUID for user account
         let random_bytes = rand::thread_rng().gen::<[u8; 16]>();
