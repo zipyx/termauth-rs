@@ -5,7 +5,7 @@ use rustrict::CensorStr;
 use regex::Regex;
 use unicode_normalization::UnicodeNormalization;
 use rand::Rng;
-use super::database::{Database, DatabaseManager, AccountManager};
+use super::database::{Database, DatabaseManager, AccountManager, Record};
 use super::super::utility::response::Response;
 
 /// Traits of an account verifier
@@ -21,7 +21,7 @@ pub trait Verifier {
 /// Traits of an account username
 pub trait Username {
 
-    fn set_username(&mut self, username: String, new_username: String) -> bool;
+    fn set_username(&mut self, username: String);
 }
 
 /// Traits of an account password
@@ -30,7 +30,7 @@ pub trait Password {
     fn generate_salt(&self) -> [u8; 16];
     fn hash_password(&self, password: String) -> String;
     fn compare_password(&self, password: String, hash: String) -> bool;
-    fn set_password(&self, password: String, new_password: String) -> bool;
+    fn set_password(&mut self, password: String);
 }
 
 
@@ -38,7 +38,7 @@ pub trait Password {
 pub trait Credential: Verifier + Password + Username {
 
     fn new() -> Self;
-    fn login(&mut self, username: String, password: String) -> bool;
+    fn login(&mut self, username: String, password: String) -> Response;
     fn create_account(&mut self, username: String, password: String) -> bool;
     fn change_password(&self, password: String, new_password: String) -> bool;
 }
@@ -77,19 +77,6 @@ impl Verifier for Account {
             // return self.validate_swear_words_regex_pattern_match(normalization)
 
             // Speed of o(n) - better choice integration with std library
-            // return normalization.is_inappropriate()
-            // if normalization.is_inappropriate() {
-            //     return Response {
-            //         validity: false,
-            //         message: "Username contains inappropriate language".to_string(),
-            //     }
-            // } else {
-            //     return Response {
-            //         validity: true,
-            //         message: "Username is valid".to_string(),
-            //     }
-            // }
-
             match normalization.is_inappropriate() {
                 true => {
                     return Response {
@@ -113,9 +100,7 @@ impl Verifier for Account {
 
     /// Validate the password being passed through before being stored
     fn validate_password(&self, password: String) -> Response {
-        // TODO: Pull password from database, and compare with hash
-        // proper validation should be done here
-        
+
         // 9 rules to follow
         // 1 - Password length must be between 8 - 64 characters long
         // 2 - Check passwords against a list of known weak passwords / blacklist
@@ -144,18 +129,24 @@ impl Verifier for Account {
 
         // if 1st rule is met, check for second rule and return true if both are met
         if check_password_length {
-            if breached_passwords.contains(&password) || weak_passwords.contains(&password) {
+            if breached_passwords.contains(&password) {
 
                 // Password found in blacklist
                 return Response {
-                    validity: true,
-                    message: "Passord compromised and available online".to_string(),
+                    validity: false,
+                    message: "Password compromised, found online".to_string(),
                 }
-            } else {
+            } else if weak_passwords.contains(&password) {
 
                 // Password not found in blacklist and meets length requirements
                 return Response {
                     validity: false,
+                    message: "Password is weak, use another.".to_string(),
+                }
+            } else {
+
+                return Response {
+                    validity: true,
                     message: "Password is secure".to_string(),
                 }
             }
@@ -168,11 +159,8 @@ impl Verifier for Account {
             }
         }
 
-        // 3 - Make special characters optional - Do nothing here
-        // 4 - Provide the user feedback on password attempts if they fail and why - Do this in the
-        //   UI layer
-        // 5 - Do not provide password hints - Do nothing here
         // 6 - Implement rate limiting checks
+        // TODO
     }
 
     /// Read a file and return a vector of strings
@@ -252,19 +240,8 @@ impl Password for Account {
     }
 
     /// Set | Change an existing password 
-    fn set_password(&self, password: String, new_password: String) -> bool {
-
-        let hash = self.hash_password(password);
-        let verify_pass = self.compare_password(new_password, hash);
-
-        // if true, update password
-        if verify_pass {
-
-            // TODO: connect database to update record
-            true
-        } else {
-            false
-        }
+    fn set_password(&mut self, password: String) {
+        self.password = password
     }
 }
 
@@ -272,11 +249,10 @@ impl Password for Account {
 impl Username for Account {
 
     /// Set the username of an existing account
-    fn set_username(&mut self, username: String, new_username: String) -> bool {
+    fn set_username(&mut self, username: String) {
         // TODO: connect database to update record
         // - get salt from database 
-        self.username = new_username;
-        true
+        self.username = username;
     }
 }
 
@@ -289,7 +265,7 @@ struct Db {
 impl Credential for Account {
 
     /// Create a new account
-    fn new() -> Self {
+    fn new() -> Account {
         Account {
             username: String::new(),
             password: String::new(),
@@ -297,11 +273,46 @@ impl Credential for Account {
     }
 
     /// Login to an existing account
-    fn login(&mut self, username: String, password: String) -> bool {
-        // self.validate_account(username, password);
-        self.username = username;
-        self.password = self.hash_password(password);
-        true
+    fn login(&mut self, username: String, password: String) -> Response {
+        // TODO
+        // Get password hash && username from the database,
+        // - verify the password hash by providing the password with the hash and using verify
+        // function
+        // Get password from the user and verify that with the hash from the database.
+        // Compare the two, if it is true then allow the user to login
+
+        let mut db = Db {
+            database: Database::new()
+        };
+
+        // self.set_username(username.to_owned());
+        // self.set_password(password.to_owned());
+
+        // Get the hash from the database
+        let result = db.database.get_account(username.clone().as_str().clone()).unwrap();
+        let db_password_hash = result.password;
+        let db_username = result.username;
+        let db_logged_in = result.logged_in;
+
+        let verified = verify(password.clone(), &db_password_hash);
+
+        match verified {
+            Ok(_) => {
+                println!("Password verified");
+                return Response {
+                    validity: true,
+                    message: "Success".to_string(),
+                }
+            },
+            Err(_) => {
+                println!("Invalid credentials");
+            }
+        }
+
+        return Response {
+            validity: false,
+            message: "Unable to login to account".to_string(),
+        }
     }
 
     /// This is where it all starts, you sign up by creating an account
@@ -312,27 +323,6 @@ impl Credential for Account {
     /// - Create the account
     fn create_account(&mut self, username: String, password: String) -> bool {
 
-        // if self.validate_account(username.to_owned(), password.to_owned()) {
-
-        //     // create account using database query here
-        //     // or create account using the offline-status-store such 
-        //     // as keyring / TODO: Figure which one
-        //     let mut db = Db {
-        //         database: Database::new()
-        //     };
-
-        //     // - Generate salt,
-        //     let salt: [u8; 16] = self.generate_salt();
-        //     // - Generate password hash 
-        //     let password_hash: String = self.hash_password(password);
-        //     // - Store salt and password hash in Database
-        //     let result = db.database.create_account(username.as_str(), password_hash.as_str(), salt).unwrap();
-
-        //     return result
-        // } else {
-        //     false
-        // }
-
         // let account_validity = self.validate_account(username.to_owned(), password.to_owned());
         match self.validate_account(username.to_owned(), password.to_owned()) {
             true => {
@@ -342,6 +332,9 @@ impl Credential for Account {
                 let mut db = Db {
                     database: Database::new()
                 };
+
+                // Test login
+                self.login(username.clone(), password.clone());
 
                 // - Generate salt,
                 let salt: [u8; 16] = self.generate_salt();
@@ -359,7 +352,17 @@ impl Credential for Account {
 
     /// Change the password of an existing account
     fn change_password(&self, password: String, new_password: String) -> bool {
-        self.set_password(password, new_password);
-        true
+
+        let hash = self.hash_password(password);
+        let verify_pass = self.compare_password(new_password, hash.to_owned());
+
+        // if true, update password
+        if verify_pass {
+            // TODO: connect database to update record
+            // self.password = new_password;
+            true
+        } else {
+            false
+        }
     }
 }

@@ -1,8 +1,7 @@
 use std::{io::{Read, Write}, path::Path, fs::File};
 
 use rand::Rng;
-use rusqlite::{Connection, ToSql, Statement, Rows, Result};
-use uuid::Uuid;
+use rusqlite::{Connection, ToSql, Statement, Rows, Result, named_params};
 
 /// Database Manager with the following methods and behavior
 pub trait DatabaseManager {
@@ -16,9 +15,7 @@ pub trait DatabaseManager {
 pub trait AccountManager {
     fn create_account(&mut self, username: &str, password: &str, salt: [u8; 16]) -> Result<bool, rusqlite::Error>;
     fn update_account_password(&mut self, username: &str, password: &str) -> Result<(), rusqlite::Error>;
-    fn get_account(&mut self, username: &str) -> Result<(), rusqlite::Error>;
-    // fn update_account(&mut self, username: &str, password: &str, role: &str) -> Result<()>;
-    // fn delete_account(&mut self, username: &str) -> Result<()>;
+    fn get_account(&mut self, username: &str) -> Result<Record, rusqlite::Error>;
 }
 
 /// Credential Manager with the following methods and behavior
@@ -40,13 +37,16 @@ impl DatabaseManager for Database {
 
     /// Create a new Database struct
     fn new() -> Database {
-        // let connection = Connection::open("database.db").unwrap();
-        let connection = Connection::open_in_memory().unwrap();
+        let connection = Connection::open("database.db").unwrap();
+        // let connection = Connection::open_in_memory().unwrap();
         Database { connection }
     }
 
     /// Build the database schema
     fn build_schema(&mut self, name: &str) -> Result<(), rusqlite::Error> {
+
+        const _DATABASE: &str = 
+            "CREATE DATABASE IF NOT EXISTS ?1";
 
         const TABLE_ACCOUNT: &str = 
             "CREATE TABLE IF NOT EXISTS account (
@@ -54,7 +54,6 @@ impl DatabaseManager for Database {
                 username        VARCHAR(40)             NOT NULL UNIQUE,
                 password        VARCHAR(150)            NOT NULL,
                 salt            VARCHAR(150)            NOT NULL,
-                role            ENUM('devuser', 'you')  NOT NULL DEFAULT 'you',
                 logged_in       BOOLEAN                 NOT NULL DEFAULT 0,
                 signed_in       BOOLEAN                 NOT NULL DEFAULT 0,
                 created_at      DATETIME                NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -68,11 +67,10 @@ impl DatabaseManager for Database {
                 username        VARCHAR(36) NOT NULL,
                 password        VARHCAR(150) NOT NULL,
                 salt            VARCHAR(150) NOT NULL,
-                FOREIGN KEY (account) REFERENCES accounts(id)
-                INDEX (account)
+                FOREIGN KEY (account) REFERENCES account(id)
             )";
 
-        const VIEW_ACCOUNT: &str = 
+        const _VIEW_ACCOUNT: &str = 
             "CREATE OR REPLACE
                 ALGORITHM = UNDEFINED
                 SQL SECURITY DEFINER
@@ -82,16 +80,13 @@ impl DatabaseManager for Database {
                     `account`.`username` AS `username`,
                     `account`.`password` AS `password`,
                     `account`.`salt` AS `salt`,
-                    `account`.`role` AS `role`,
-                    `account`.`secure_password` AS `secure_password`,
-                    `account`.`claim` AS `claim`,
                     `account`.`logged_in` AS `logged_in`,
                     `account`.`signed_in` AS `signed_in`,
                     `account`.`created_at` AS `created_at`,
                     `account`.`updated_at` AS `updated_at`
             ";
 
-        const VIEW_CREDENTIALS: &str = 
+        const _VIEW_CREDENTIALS: &str = 
             "CREATE OR REPLACE
                 ALGORITHM = UNDEFINED
                 SQL SECURITY DEFINER
@@ -104,30 +99,27 @@ impl DatabaseManager for Database {
                     `password_manager`.`salt` AS `salt`
             ";
 
+        // self.connection.execute(DATABASE, [name])?;
         self.connection.execute(TABLE_ACCOUNT, [])?;
         self.connection.execute(TABLE_CREDENTIALS, [])?;
-        self.connection.execute(VIEW_ACCOUNT, [])?;
-        self.connection.execute(VIEW_CREDENTIALS, [])?;
+        // self.connection.execute(VIEW_ACCOUNT, [])?;
+        // self.connection.execute(VIEW_CREDENTIALS, [])?;
 
         Ok(())
     }
 }
 
+#[derive(Debug)]
+pub struct Record {
+    id: String,
+    pub username: String,
+    pub password: String,
+    salt: String,
+    pub logged_in: bool,
+}
+
 /// AccountManager trait implementation for Database struct
 impl AccountManager for Database {
-        // const TABLE_ACCOUNT: &str = 
-        //     "CREATE TABLE IF NOT EXISTS account (
-        //         id              CHAR(36)                PRIMARY KEY,
-        //         username        VARCHAR(36)             NOT NULL UNIQUE,
-        //         password        VARCHAR(150)            NOT NULL,
-        //         salt            VARCHAR(150)            NOT NULL,
-        //         role            ENUM('devuser', 'you')  NOT NULL DEFAULT 'you',
-        //         logged_in       BOOLEAN                 NOT NULL DEFAULT 0,
-        //         signed_in       BOOLEAN                 NOT NULL DEFAULT 0,
-        //         created_at      DATETIME                NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        //         updated_at      DATETIME                NOT NULL DEFAULT CURRENT_TIMESTAMP
-        //     )";
-
 
     /// Create a new account in the database
     /// We use a UUID as the primary key for the account 
@@ -141,10 +133,17 @@ impl AccountManager for Database {
     fn create_account(&mut self, username: &str, password: &str, salt: [u8; 16]) -> Result<bool, rusqlite::Error> {
 
         // Convert salt into readable string type
-        let salt_string = match std::str::from_utf8(&salt) {
-            Ok(v) => v,
-            Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
-        };
+        // let salt_string = match std::str::from_utf8(&salt) {
+        //     Ok(v) => v,
+        //     Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+        // };
+
+        // let test = format!("{:?}", salt);
+
+        self.build_schema("database.db")?;
+
+        // let salt_string = format!("{:?}", salt);
+        let salt_string = String::from_utf8_lossy(&salt).to_string();
 
         // Generate random UUID for user account
         let random_bytes = rand::thread_rng().gen::<[u8; 16]>();
@@ -166,8 +165,8 @@ impl AccountManager for Database {
 
         // Insert query with parameters
         match self.connection.execute(
-            "INSERT INTO `accounts` (`id`, `username`, `password`, `salt`) VALUES (?1, ?2, ?3, ?4)",
-            &[&id, username, &password, salt_string],
+            "INSERT INTO `account` (`id`, `username`, `password`, `salt`) VALUES (?1, ?2, ?3, ?4)",
+            &[&id, username, &password, salt_string.as_str()],
             ) 
             {
                 Ok(_) => Ok(true),
@@ -177,19 +176,43 @@ impl AccountManager for Database {
 
     fn update_account_password(&mut self, username: &str, password: &str) -> Result<(), rusqlite::Error> {
         self.connection.execute(
-            "UPDATE accounts SET password = ?1 WHERE username = ?2",
+            "UPDATE account SET password = ?1 WHERE username = ?2",
             &[&password, &username],
         )?;
 
         Ok(())
     }
 
-    fn get_account(&mut self, username: &str) -> Result<(), rusqlite::Error> {
-        // get just the account from database based on username 
-        self.connection.execute("SELECT * FROM accounts WHERE username = ?1", &[&username])
-            .unwrap();
+    fn get_account(&mut self, username: &str) -> Result<Record, rusqlite::Error> {
 
-        Ok(())
+        // Return multiple records
+        // let mut stmt = self.connection.prepare("SELECT * FROM account").unwrap();
+        // let result = stmt.query_map([], |row| {
+        //     Ok(Record {
+        //         id: row.get(0)?,
+        //         username: row.get(1)?,
+        //         password: row.get(2)?,
+        //     })
+        // })?;
+        // for person in result {
+        //     println!("Found person {:?}", person.unwrap());
+        //     // return person.unwrap();
+        // }
+        // let result = stmt.execute(&[&username]);
+        // println!("{:?}", result.);
+
+        let mut stmt = self.connection.prepare("SELECT * FROM `account` WHERE `username` = ?1").unwrap();
+        let record = stmt.query_row([username], |row| {
+            Ok(Record {
+                id: row.get(0)?,
+                username: row.get(1)?,
+                password: row.get(2)?,
+                salt: row.get(3)?,
+                logged_in: row.get(4)?,
+            })
+        });
+        record
+
     }
 
 }

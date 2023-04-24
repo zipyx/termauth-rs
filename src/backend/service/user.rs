@@ -193,8 +193,19 @@ impl <'a>User<'a> {
 
     /// User Service - Login to an account using provided credentials
     pub fn login(&mut self, username: String, password: String) -> bool {
-        self.tab = TabsState::new(MEMBER.to_vec());
-        self.account.login(username, password)
+        // self.tab = TabsState::new(MEMBER.to_vec());
+        // self.account.login(username, password)
+        let result = self.account.login(username, password);
+        match result.validity {
+            true => {
+                self.tab = TabsState::new(MEMBER.to_vec());
+                self.set_signed_in(true);
+                true
+            },
+            false => {
+                false
+            }
+        }
     }
 
     /// User Service - Set username to an exiting account using provided credentials
@@ -355,19 +366,8 @@ impl <'a>User<'a> {
             }
         }
 
-        match self.account.create_account(username, password) {
-            true => {
-                // self.tab.index = 0;
-                self.user_mode = UserMode::Normal;
-                self.tab = TabsState::new(MEMBER.to_vec());
-                self.signed_in = true;
-                true
-            },
-            _ => {
-                self.signup_account_error_message = "Failed to create account".to_string();
-                false
-            }
-        }
+        let mut account = Account::new();
+        account.create_account(username, password)
     }
 
     /// User Service - Modify a user's password

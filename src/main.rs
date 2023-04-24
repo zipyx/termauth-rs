@@ -399,7 +399,7 @@ fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Durat
 
                             KeyCode::Char('w') => {
                                 let username = app.user.get_signup_username();
-                                let password = app.user.get_signup_password();
+                                let password = app.user.get_signup_secure_password();
                                 match app.user.create_account( 
                                     username,
                                     password

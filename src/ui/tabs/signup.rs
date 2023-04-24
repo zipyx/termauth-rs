@@ -137,6 +137,7 @@ fn draw_signup_block<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
             ],
             Style::default()
         ),
+
         UserMode::Username => (
             vec![
                 Span::raw("You are now in "),
@@ -144,6 +145,7 @@ fn draw_signup_block<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
             ],
             Style::default()
         ),
+
         UserMode::Password => (
             vec![
                 Span::raw("You are now in "),
@@ -228,9 +230,5 @@ fn draw_signup_block<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     if app.user.get_signup_password_error_message().len() > 0 {
         f.render_widget(pass_error_help_message, password_error_message_pos);
     }
-
-    // if app.user.get_signup_password_error_message().len() > 0 {
-    //     f.render_widget(password_error_message, password_error_message_pos);
-    // }
 
 }

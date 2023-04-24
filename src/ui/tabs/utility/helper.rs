@@ -59,12 +59,22 @@ pub fn draw_help_welcome<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect
 pub fn draw_help_signup<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     let text = vec![
         Spans::from(vec![
-            Span::styled("[insert] username: ", Style::default().fg(Color::Yellow)),
-            Span::from("The username must contain at least 1 lowercase letter, 1 uppercase letter, 1 number, and/or _ ."),
+            Span::from("There are two modes, "),
+            Span::styled("[insert] mode", Style::default().fg(Color::Yellow)),
+            Span::from(" and "),
+            Span::styled("[normal] mode", Style::default().fg(Color::LightBlue)),
         ]),
         Spans::from(vec![
-            Span::styled("[insert] password: ", Style::default().fg(Color::Yellow)),
-            Span::from("The password must be at least 8 characters long and must be unique"),
+            Span::styled("[insert] Enter : ", Style::default().fg(Color::Yellow)),
+            Span::from("To move to next input"),
+        ]),
+        Spans::from(vec![
+            Span::styled("[normal] w : ", Style::default().fg(Color::LightBlue)),
+            Span::from("Submit your input and create an account"),
+        ]),
+        Spans::from(vec![
+            Span::styled("[normal] i : ", Style::default().fg(Color::LightBlue)),
+            Span::from("Enter [insert] mode where input can be entered"),
         ]),
         Spans::from(vec![
             Span::styled("[normal] j : ", Style::default().fg(Color::LightBlue)),
