@@ -22,6 +22,7 @@ pub trait Verifier {
 pub trait Username {
 
     fn set_username(&mut self, username: String);
+    fn get_username(&self) -> String;
 }
 
 /// Traits of an account password
@@ -29,7 +30,7 @@ pub trait Password {
 
     fn generate_salt(&self) -> [u8; 16];
     fn generate_password(&self, password: String) -> String;
-    fn hash_password(&self, password: String) -> String;
+    fn hash_password(&self, password: String, salt: [u8; 16]) -> String;
     fn compare_password(&self, password: String, hash: String) -> bool;
     fn set_password(&mut self, password: String);
 }
@@ -41,7 +42,7 @@ pub trait Credential: Verifier + Password + Username {
     fn new() -> Self;
     fn login(&mut self, username: String, password: String) -> Response;
     fn create_account(&mut self, username: String, password: String) -> bool;
-    fn change_password(&self, password: String, new_password: String) -> bool;
+    fn change_password(&self, password: String, new_password: String) -> Response;
 }
 
 /// Account struct 
@@ -227,10 +228,11 @@ impl Password for Account {
     }
 
     /// Hash function for our password
-    fn hash_password(&self, password: String) -> String {
+    fn hash_password(&self, password: String, salt: [u8; 16]) -> String {
 
         // Get newly generated password
         let generated_password = self.generate_password(password);
+
         // Convert extended password to bytes and begin hashing with salt
         let hash = hash_with_salt(generated_password.clone(), DEFAULT_COST, self.generate_salt()).unwrap();
 
@@ -263,6 +265,11 @@ impl Username for Account {
         // - get salt from database 
         self.username = username;
     }
+
+    // Get the username of an existing account
+    fn get_username(&self) -> String {
+        self.username.clone()
+    }
 }
 
 /// Connect Database 
@@ -294,8 +301,8 @@ impl Credential for Account {
             database: Database::new()
         };
 
-        // self.set_username(username.to_owned());
-        // self.set_password(password.to_owned());
+        self.set_username(username.to_owned());
+        self.set_password(password.to_owned());
 
         // Get password
         let generated_password = self.generate_password(password.clone());
@@ -357,13 +364,17 @@ impl Credential for Account {
                 // let result = db.database.get_account(username.clone().as_str().clone()).unwrap();
                 // let db_username = result.username;
 
+                self.set_username(username.to_owned());
+                self.set_password(password.to_owned());
+
                 // - Generate salt,
                 let salt: [u8; 16] = self.generate_salt();
 
                 let generated_password = self.generate_password(password.clone());
 
                 // - Generate password hash 
-                let password_hash: String = self.hash_password(password.clone());
+                let password_hash: String = self.hash_password(password.clone(), salt);
+
                 // Confirm hash
                 let result = self.compare_password(generated_password, password_hash.clone());
                 println!("\nHash result two : {}", result);
@@ -379,18 +390,70 @@ impl Credential for Account {
     }
 
     /// Change the password of an existing account
-    fn change_password(&self, password: String, new_password: String) -> bool {
+    fn change_password(&self, password: String, new_password: String) -> Response {
 
-        let hash = self.hash_password(password);
-        let verify_pass = self.compare_password(new_password, hash.to_owned());
+        let mut db = Db {
+            database: Database::new()
+        };
 
-        // if true, update password
-        if verify_pass {
-            // TODO: connect database to update record
-            // self.password = new_password;
-            true
-        } else {
-            false
+        // Get password
+        let generated_password = self.generate_password(password.clone());
+
+        // Get the hash from the database
+        let result = db.database.get_account(self.username.clone().as_str().clone()).unwrap();
+        let db_password_hash = result.password;
+
+        let verified = verify(generated_password, &db_password_hash);
+
+        match verified {
+
+            Ok(true) => {
+
+                // generate salt
+                let salt: [u8; 16] = self.generate_salt();
+
+                // generate new password hash
+                let password_hash: String = self.hash_password(new_password.clone(), salt);
+
+                println!("[Authenticator] -- {} -- {}", self.username, password_hash);
+
+                let update_result = db.database.update_account_password(
+                    self.username.as_str(), password_hash.as_str(), salt);
+
+                match update_result {
+                    Ok(true) => {
+                        return Response {
+                            validity: true,
+                            message: "Success".to_string(),
+                        }
+                    },
+                    Ok(false) => {
+                        return Response {
+                            validity: false,
+                            message: "Error trying to update password".to_string(),
+                        }
+                    },
+                    Err(_) => {
+                        println!("Error trying to update password");
+                    }
+                }
+            },
+            Ok(false) => {
+
+                return Response {
+                    validity: false,
+                    message: "Password does not match, try again".to_string(),
+                }
+
+            },
+            Err(_) => {
+                println!("Invalid credentials");
+            }
+        }
+
+        return Response {
+            validity: false,
+            message: "Error trying to verify password".to_string(),
         }
     }
 }

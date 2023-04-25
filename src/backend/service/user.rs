@@ -1,5 +1,5 @@
-use crate::component::state::TabsState;
-use super::{security::authenticator::{Account, Credential, Verifier}, utility::constants::{VISITOR, MEMBER}};
+use crate::component::state::{TabsState, LoggedInState};
+use super::{security::authenticator::{Account, Credential, Verifier, Username, Password}, utility::constants::{VISITOR, MEMBER}};
 
 /// Enum system user mode containing the following fields for mode behavior
 /// - Normal : default mode 
@@ -11,13 +11,17 @@ pub enum UserMode {
     Normal,
     Insert,
     App,
+    Profile,
     Username,
     Password,
+    OldPassword,
+    NewPassword,
 }
 
 /// Enum signup containing the following fields for mode behaviour
 /// - Username : required for username input
 /// - Password : required for password input
+#[derive(Debug, Clone)]
 pub enum SignUp {
     Username,
     Password,
@@ -30,6 +34,15 @@ pub enum SignUp {
 pub enum Login {
     Username,
     Password,
+}
+
+/// Enum Profile containing the following fields for mode behaviour
+/// - OldPassword : required for password input
+/// - NewPassword : required for password input
+#[derive(Debug, Clone)]
+pub enum Profile {
+    OldPassword,
+    NewPassword,
 }
 
 /// Enum credential manager containing the following fields for mode behavior
@@ -46,10 +59,6 @@ pub enum CredentialManager {
 /// - Account : account object
 enum Auth {
     Account(Account),
-}
-
-impl Login {
-
 }
 
 /// User Servcie 
@@ -87,12 +96,18 @@ pub struct User<'a> {
     app_search_query: String,
     pub app_secure_password: String,
     pub app_username: String,
+    old_password: String,
+    old_secure_password: String,
+    new_password: String,
+    new_secure_password: String,
+    new_secure_password_error_message: String,
     login: Login,
     login_username: String,
     login_password: String,
     login_secure_password: String,
     login_error_message: String,
     pub notepad: Vec<String>,
+    pub profile: Profile,
     pub scratchpad: String,
     pub secure_password: String,
     signed_in: bool,
@@ -103,6 +118,7 @@ pub struct User<'a> {
     signup_username_error_message: String,
     signup_password_error_message: String,
     pub tab: TabsState<'a>,
+    pub logged_in_tab: LoggedInState<'a>,
     pub user_mode: UserMode,
 
 }
@@ -151,6 +167,11 @@ impl <'a>User<'a> {
             app_secure_password: String::new(),
             app_password: String::new(),
             app_username: String::new(),
+            old_password: String::new(),
+            old_secure_password: String::new(),
+            new_password: String::new(),
+            new_secure_password: String::new(),
+            new_secure_password_error_message: String::new(),
             auth: Auth::Account(Account::new()),
             login: Login::Username,
             login_username: String::new(),
@@ -158,6 +179,7 @@ impl <'a>User<'a> {
             login_secure_password: String::new(),
             login_error_message: String::new(),
             notepad: Vec::new(),
+            profile: Profile::OldPassword,
             scratchpad: String::new(),
             secure_password: String::new(),
             signed_in: false,
@@ -168,8 +190,109 @@ impl <'a>User<'a> {
             signup_username_error_message: String::new(),
             signup_password_error_message: String::new(),
             tab: TabsState::new(VISITOR.to_vec()),
+            logged_in_tab: LoggedInState::new(MEMBER.to_vec()),
             user_mode: UserMode::Normal,
         }
+    }
+
+    /// User service - Get old password
+    pub fn get_old_password(&mut self) -> String {
+        self.old_password.clone()
+    }
+
+    /// User Service - Get new password
+    pub fn get_new_password(&mut self) -> String {
+        self.new_password.clone()
+    }
+
+    /// User Service - Get the old secure password 
+    pub fn get_old_secure_password(&mut self) -> String {
+        self.old_secure_password.clone()
+    }
+
+    /// User Service - Get the new secure password
+    pub fn get_new_secure_password(&mut self) -> String {
+        self.new_secure_password.clone()
+    }
+
+    /// User Service - Remove old password
+    pub fn pop_old_password(&mut self) {
+        self.old_password.pop();
+    }
+
+    /// User Service - Remove old secure password
+    pub fn pop_old_secure_password(&mut self) {
+        self.old_secure_password.pop();
+    }
+
+    /// User Service - Remove new password 
+    pub fn pop_new_password(&mut self) {
+        self.new_password.pop();
+    }
+
+    /// User Service - Remove new secure password
+    pub fn pop_new_secure_password(&mut self) {
+        self.new_secure_password.pop();
+    }
+
+    /// User Service - Set old password
+    /// - old_password : old password
+    pub fn set_old_password(&mut self, character: char) {
+        self.old_password.push(character);
+    }
+
+    /// User Service - Set old secure password 
+    /// - old_secure_password : old secure password
+    pub fn set_old_secure_password(&mut self, character: char) {
+        self.old_secure_password.push(character);
+    }
+
+    /// User Service - Set new password
+    /// - new_password : new password
+    pub fn set_new_password(&mut self, character: char) {
+        self.new_password.push(character);
+    }
+
+    /// User Service - Set new secure password
+    /// - new_secure_password : new secure password
+    pub fn set_new_secure_password(&mut self, character: char) {
+        self.new_secure_password.push(character);
+    }
+
+    /// User Service - Get login error message
+    pub fn get_new_secure_password_error_message(&self) -> String {
+        self.new_secure_password_error_message.clone()
+    }
+
+    /// User Service - Set login message
+    /// - message : message
+    pub fn set_new_secure_password_error_message(&mut self, message: String) {
+        self.new_secure_password_error_message = message;
+    }
+
+    /// User Service - Clear login error message
+    pub fn clear_new_secure_password_error_message(&mut self) {
+        self.new_secure_password_error_message.clear();
+    }
+
+    /// User Service - Clear old password 
+    pub fn clear_old_password(&mut self) {
+        self.old_password.clear();
+    }
+
+    /// User Service - Clear old secure password
+    pub fn clear_old_secure_password(&mut self) {
+        self.old_secure_password.clear();
+    }
+
+    /// User Service - Clear new password
+    pub fn clear_new_password(&mut self) {
+        self.new_password.clear();
+    }
+
+    /// User Serivce - Clear new secure password
+    pub fn clear_new_secure_password(&mut self) {
+        self.new_secure_password.clear();
     }
 
     /// User Service - Getting the user login mode
@@ -180,6 +303,26 @@ impl <'a>User<'a> {
     /// User Service - Setting the login mode for the user
     pub fn set_login_mode(&mut self, login_mode: Login) {
         self.login = login_mode;
+    }
+
+    /// User Service - Get sign up mode
+    pub fn get_signup_mode(&mut self) -> SignUp {
+        self.signup.clone()
+    }
+
+    /// User Service - Setting the signup mode for the user 
+    pub fn set_signup_mode(&mut self, signup_mode: SignUp) {
+        self.signup = signup_mode;
+    }
+
+    /// User Service - Get the profile mode
+    pub fn get_profile_mode(&mut self) -> Profile {
+        self.profile.clone()
+    }
+
+    /// User Service - Setting the Profile mode for the user 
+    pub fn set_profile_mode(&mut self, profile_mode: Profile) {
+        self.profile = profile_mode;
     }
 
     /// User Service - Set the app name for password manager 
@@ -287,12 +430,14 @@ impl <'a>User<'a> {
 
     /// User Service - Login to an account using provided credentials
     pub fn login(&mut self, username: String, password: String) -> bool {
-        // self.tab = TabsState::new(MEMBER.to_vec());
-        // self.account.login(username, password)
-        let result = self.account.login(username, password);
+        // let mut account = Account::new();
+        let result = self.account.login(username.clone(), password.clone());
+
         match result.validity {
             true => {
-                self.tab = TabsState::new(MEMBER.to_vec());
+                // self.tab = TabsState::new(MEMBER.to_vec());
+                self.account.set_username(username.clone());
+                self.account.set_password(password.clone());
                 self.set_signed_in(true);
                 true
             },
@@ -418,6 +563,7 @@ impl <'a>User<'a> {
     /// - password : password
      pub fn create_account(&mut self, username: String, password: String) -> bool {
 
+        // let mut account = Account::new();
         let password_response = self.account.validate_password(password.clone());
         let username_response = self.account.validate_username(username.clone());
 
@@ -444,15 +590,27 @@ impl <'a>User<'a> {
             }
         }
 
-        let mut account = Account::new();
-        account.create_account(username, password)
+        self.account.set_username(username.clone());
+        self.account.set_password(password.clone());
+        self.account.create_account(username.clone(), password.clone())
     }
 
     /// User Service - Modify a user's password
     /// - password : current password
     /// - new_password : new password
-    fn change_account_password(&self, password: String, new_password: String) -> bool {
-        self.account.change_password(password, new_password)
+    pub fn change_account_password(&mut self, password: String, new_password: String) -> bool {
+        // let account = Account::new();
+        let response = self.account.change_password(password, new_password);
+
+        match response.validity {
+            true => {
+                true
+            },
+            false => {
+                self.set_new_secure_password_error_message(response.message);
+                false
+            }
+        }
     }
 
 }

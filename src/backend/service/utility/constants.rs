@@ -7,9 +7,10 @@ pub const SYSTEM: [&str; 5] =
     "Credential Manager"
 ];
 
-pub const MEMBER: [&str; 3] = 
+pub const MEMBER: [&str; 4] = 
 [
-    "Welcome", 
+    "Welcome",
+    "Profile",
     "Notepad", 
     "Credential Manager"
 ];

@@ -11,7 +11,7 @@ use tui::{
     text::{Span, Spans}};
 
 use crate::App;
-use super::tabs::{welcome, signup, login, notepad, credential_manager};
+use super::tabs::{welcome, signup, login, notepad, profile, credential_manager};
 
 pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let chunks = Layout::default()
@@ -35,17 +35,30 @@ pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .highlight_style(Style::default().fg(Color::Green))
         .select(app.user.tab.index);
 
+    let logged_in_titles = app
+        .user.logged_in_tab.titles.iter()
+        .map(|t| Spans::from(Span::styled(*t, Style::default().fg(Color::White))))
+        .collect();
+
+    let logged_in_tab = Tabs::new(logged_in_titles)
+        .block(Block::default().borders(Borders::ALL).title("System"))
+        .highlight_style(Style::default().fg(Color::Green))
+        .select(app.user.logged_in_tab.index);
+
     // Render tabs with respective UI
-    f.render_widget(tabs, chunks[0]);
+    // f.render_widget(tabs, chunks[0]);
 
     if app.user.get_signed_in() {
-        match app.user.tab.index {
+        f.render_widget(logged_in_tab, chunks[0]);
+        match app.user.logged_in_tab.index {
             0 => welcome::draw_welcome(f, app, chunks[1]),
-            1 => notepad::draw_notepad(f, app, chunks[1]),
-            2 => credential_manager::draw_credential_manager(f, app, chunks[1]),
+            1 => profile::draw_profile(f, app, chunks[1]),
+            2 => notepad::draw_notepad(f, app, chunks[1]),
+            3 => credential_manager::draw_credential_manager(f, app, chunks[1]),
             _ => {}
         }
     } else {
+        f.render_widget(tabs, chunks[0]);
         match app.user.tab.index {
             0 => welcome::draw_welcome(f, app, chunks[1]),
             1 => signup::draw_signup(f, app, chunks[1]),

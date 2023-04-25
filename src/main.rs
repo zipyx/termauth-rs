@@ -11,7 +11,7 @@ use crossterm::{
 use tui::{backend::{CrosstermBackend, Backend}, Terminal};
 use backend::
 service::{
-    user::{User, UserMode, SignUp, Login, CredentialManager},
+    user::{User, UserMode, SignUp, Login, CredentialManager, Profile},
     utility::constants::SYSTEM,
 };
 
@@ -20,8 +20,8 @@ service::{
 pub struct App<'a> {
     user: User<'a>,
     scroll: u16,
-    info: StateList<&'a str>,
-    state: bool,
+    // info: StateList<&'a str>,
+    // state: bool,
 }
 
 impl <'a>App<'a> {
@@ -31,8 +31,8 @@ impl <'a>App<'a> {
         App {
             user: User::new(),
             scroll: 2,
-            info: StateList::all_items(SYSTEM.to_vec()),
-            state: true,
+            // info: StateList::all_items(SYSTEM.to_vec()),
+            // state: true,
         }
     }
 
@@ -50,20 +50,36 @@ impl <'a>App<'a> {
         self.scroll %= 100;
     }
 
-    fn on_up_info(&mut self) {
-        self.info.previous();
-    }
+    // fn on_up_info(&mut self) {
+    //     self.info.previous();
+    // }
 
-    fn on_down_info(&mut self) {
-        self.info.next();
-    }
+    // fn on_down_info(&mut self) {
+    //     self.info.next();
+    // }
 
     fn on_right(&mut self) {
-        self.user.tab.next();
+        match self.user.get_signed_in() {
+            true => {
+                self.user.logged_in_tab.next();
+            }
+            false => {
+                self.user.tab.next();
+            }
+        }
+        // self.user.tab.next();
     }
 
     fn on_left(&mut self) {
-        self.user.tab.previous();
+        match self.user.get_signed_in() {
+            true => {
+                self.user.logged_in_tab.previous();
+            }
+            false => {
+                self.user.tab.previous();
+            }
+        }
+        // self.user.tab.previous();
     }
 
     fn panic_hook(&mut self) {
@@ -140,8 +156,189 @@ fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Durat
                 // ##################################################################
                 // ##################################################################
 
+                // Welcome
+                if app.user.logged_in_tab.index == 0 && app.user.get_signed_in() {
+
+                    match app.user.user_mode {
+
+                        // ##################################################################
+                        // ##################################################################
+                        UserMode::Normal => match key.code {
+
+                            KeyCode::Char('j') => {
+                                if last_tick + tick_rate <= Instant::now() {
+                                    app.scroll_down();
+                                    last_tick = Instant::now();
+                                }
+                            }
+
+                            KeyCode::Char('k') => {
+                                if last_tick + tick_rate <= Instant::now() {
+                                    app.scroll_up();
+                                    last_tick = Instant::now();
+                                }
+                            }
+
+                            KeyCode::Char('h') => app.on_left(),
+                            KeyCode::Char('l') => app.on_right(),
+                            KeyCode::Char('q') | KeyCode::Esc => {
+                                disable_raw_mode()?;
+                                terminal.show_cursor()?;
+                                return Ok(())
+                            }
+
+                            _ => {}
+                        }
+
+                        _ => {}
+                    }
+                } 
+
+                // ##################################################################
+                // ##################################################################
+                // ##################################################################
+                // ##################################################################
+                // ##################################################################
+
+                // Enter screen -> Profile
+                else if app.user.logged_in_tab.index == 1 && app.user.get_signed_in() {
+
+                    match app.user.user_mode {
+
+                        // ##################################################################
+                        // ##################################################################
+                        UserMode::Normal => match key.code {
+
+                            KeyCode::Char('w') => {
+
+                                let old_password = app.user.get_old_secure_password();
+                                let new_password = app.user.get_new_secure_password();
+
+                                match app.user.change_account_password( 
+                                    old_password,
+                                    new_password
+                                ) {
+                                        true => {
+                                            app.user.clear_old_password();
+                                            app.user.clear_old_secure_password();
+                                            app.user.clear_new_password();
+                                            app.user.clear_new_secure_password();
+                                        }
+                                        _ => {}
+                                    };
+
+                            }
+
+                            KeyCode::Char('j') => {
+                                app.user.set_profile_mode(Profile::NewPassword)
+                            }
+
+                            KeyCode::Char('k') => {
+                                app.user.set_profile_mode(Profile::OldPassword)
+                            }
+
+                            KeyCode::Char('h') => app.on_left(),
+                            KeyCode::Char('l') => app.on_right(),
+                            KeyCode::Char('q') | KeyCode::Esc => {
+                                disable_raw_mode()?;
+                                terminal.show_cursor()?;
+                                return Ok(())
+                            }
+
+                            KeyCode::Char('i') => {
+
+                                match app.user.get_profile_mode() {
+
+                                    // Login::Username => {
+                                    Profile::OldPassword => {
+                                        app.user.clear_new_secure_password_error_message();
+                                        app.user.user_mode = UserMode::OldPassword;
+                                        app.user.set_profile_mode(Profile::OldPassword);
+                                        // app.user.login = Login::Username;
+                                    }
+
+                                    Profile::NewPassword => {
+                                        app.user.clear_new_secure_password_error_message();
+                                        app.user.user_mode = UserMode::NewPassword;
+                                        app.user.set_profile_mode(Profile::NewPassword);
+                                        // app.user.login = Login::Password;
+                                    }
+                                }
+                            }
+
+                            _ => {}
+                        }
+
+                        // ##################################################################
+                        // ##################################################################
+
+                        // Old Password
+                        UserMode::OldPassword => match key.code {
+
+                            KeyCode::Enter => {
+                                app.user.user_mode = UserMode::NewPassword;
+                                app.user.set_profile_mode(Profile::NewPassword);
+                                // app.user.login = Login::Password;
+                            }
+
+                            KeyCode::Char(c) => {
+                                let ast: char = '*';
+                                app.user.set_old_password(ast);
+                                app.user.set_old_secure_password(c);
+                            }
+
+                            KeyCode::Backspace => {
+                                app.user.pop_old_password();
+                                app.user.pop_old_secure_password();
+                            }
+
+                            KeyCode::Esc => {
+                                app.user.user_mode = UserMode::Normal;
+                            }
+
+                            _ => {}
+                        }
+
+                        // ##################################################################
+                        // ##################################################################
+
+                        // Login Password
+                        UserMode::NewPassword => match key.code {
+
+                            KeyCode::Enter => {
+                                app.user.user_mode = UserMode::Normal;
+                            }
+
+                            KeyCode::Char(c) => {
+                                let ast: char = '*';
+                                app.user.set_new_password(ast);
+                                app.user.set_new_secure_password(c);
+                            }
+
+                            KeyCode::Backspace => {
+                                app.user.pop_new_password();
+                                app.user.pop_new_secure_password();
+                            }
+
+                            KeyCode::Esc => {
+                                app.user.user_mode = UserMode::Normal;
+                            }
+
+                            _ => {}
+                        } // User mode parenthesis
+
+                        _ => {}
+                    } // match area
+                }
+
+                // ##################################################################
+                // ##################################################################
+                // ##################################################################
+                // ##################################################################
+                // ##################################################################
+
                 // Notepad
-                if app.user.tab.index == 1 && app.user.get_signed_in() {
+                if app.user.logged_in_tab.index == 2 && app.user.get_signed_in() {
 
                     match app.user.user_mode {
 
@@ -198,7 +395,7 @@ fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Durat
                 // ##################################################################
 
                 // Credential Manager
-                else if app.user.tab.index == 2 && app.user.get_signed_in() {
+                else if app.user.logged_in_tab.index == 3 && app.user.get_signed_in() {
 
                     match app.user.user_mode {
 
@@ -362,7 +559,7 @@ fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Durat
                 // ##################################################################
 
                 // Welcome
-                if app.user.tab.index == 0 {
+                if app.user.tab.index == 0 && !app.user.get_signed_in() {
 
                     match app.user.user_mode {
 
@@ -406,7 +603,7 @@ fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Durat
                 // ##################################################################
 
                 // Enter screen -> Signup
-                else if app.user.tab.index == 1 {
+                else if app.user.tab.index == 1 && !app.user.get_signed_in() {
 
                     match app.user.user_mode {
 
@@ -530,7 +727,6 @@ fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Durat
                     }
                 } 
 
-
                 // ##################################################################
                 // ##################################################################
                 // ##################################################################
@@ -538,7 +734,7 @@ fn ui_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Durat
                 // ##################################################################
 
                 // Enter screen -> Login
-                else if app.user.tab.index == 2 {
+                else if app.user.tab.index == 2 && !app.user.get_signed_in() {
 
                     match app.user.user_mode {
 

@@ -14,7 +14,7 @@ pub trait DatabaseManager {
 /// Account Manager with the following methods and behavior
 pub trait AccountManager {
     fn create_account(&mut self, username: &str, password: &str, salt: [u8; 16]) -> Result<bool, rusqlite::Error>;
-    fn update_account_password(&mut self, username: &str, password: &str) -> Result<(), rusqlite::Error>;
+    fn update_account_password(&mut self, username: &str, password: &str, salt: [u8; 16]) -> Result<bool, rusqlite::Error>;
     fn get_account(&mut self, username: &str) -> Result<Record, rusqlite::Error>;
 }
 
@@ -169,7 +169,7 @@ impl AccountManager for Database {
         match self.connection.execute(
             "INSERT INTO `account` (`id`, `username`, `password`, `salt`) VALUES (?1, ?2, ?3, ?4)",
             &[&id, username, &password, salt_string.as_str()],
-            ) 
+        ) 
             {
                 Ok(_) => {
                     Ok(true)
@@ -178,13 +178,18 @@ impl AccountManager for Database {
             }
     }
 
-    fn update_account_password(&mut self, username: &str, password: &str) -> Result<(), rusqlite::Error> {
-        self.connection.execute(
+    fn update_account_password(&mut self, username: &str, password: &str, salt: [u8; 16]) -> Result<bool, rusqlite::Error> {
+
+        match self.connection.execute(
             "UPDATE account SET password = ?1 WHERE username = ?2",
             &[&password, &username],
-        )?;
-
-        Ok(())
+        )
+            {
+                Ok(_) => {
+                    Ok(true)
+                },
+                Err(_) => Ok(false),
+            }
     }
 
     fn get_account(&mut self, username: &str) -> Result<Record, rusqlite::Error> {
